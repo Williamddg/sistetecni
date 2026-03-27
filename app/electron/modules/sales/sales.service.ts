@@ -4,6 +4,7 @@ import { generateInvoicePdf } from '../../invoice/invoicePdf';
 import { createSaleRepo } from '../../db/sales.repo';
 import { logAuditRepo } from '../../db/audit.repo';
 import { getDbMode } from '../../db/db';
+import { resolveSensitiveOperationPlan } from '../../db/fallbackControl';
 
 import {
   suspendSale,
@@ -183,9 +184,9 @@ export const getSaleDetailByMode = async (payload: any): Promise<any> => {
 };
 
 export const returnSaleByMode = async (payload: any): Promise<any> => {
-  const mode = await getDbMode();
+  const plan = await resolveSensitiveOperationPlan('sales:return');
 
-  if (mode === 'mysql') {
+  if (plan.mode === 'mysql') {
     return await returnSaleMySql(payload);
   }
 

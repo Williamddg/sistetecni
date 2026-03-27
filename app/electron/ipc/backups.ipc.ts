@@ -3,6 +3,7 @@ import path from 'node:path';
 import { app, dialog, ipcMain } from 'electron';
 import { getDb, getDbPath } from '../db/db';
 import { logAuditRepo } from '../db/audit.repo';
+import { markFallbackOperation, resolveSensitiveOperationPlan } from '../db/fallbackControl';
 import { requirePermissionFromPayload } from './rbac';
 
 type BackupReason = 'manual' | 'daily' | 'cash_close';
@@ -67,6 +68,7 @@ export const registerBackupsIpc = (): void => {
   ipcMain.handle('backup:create-manual', async (_e, payload) => {
     try {
       requirePermissionFromPayload(payload, 'backup:write');
+      const plan = await resolveSensitiveOperationPlan('backup:create');
       const out = await createBackup('manual');
       const actorId = String((payload as any)?.userId ?? '');
       if (actorId) {
@@ -78,6 +80,7 @@ export const registerBackupsIpc = (): void => {
           metadata: { reason: 'manual' },
         });
       }
+      markFallbackOperation(plan, { backupPath: out, reason: 'manual' });
       return out;
     } catch {
       return null;

@@ -1,26 +1,36 @@
-import { isMySqlEnabled } from './dbRouter';
-
 // SQLite fallback
 import { addExpense, listExpenses } from './queries';
 
 // MySQL
 import { addExpenseMySql, listExpensesMySql } from './mysql/expenses.mysql';
+import { markFallbackOperation, resolveSensitiveOperationPlan } from './fallbackControl';
 
 export const addExpenseRepo = async (payloadOrExpense: any): Promise<string> => {
   // ✅ acepta cualquiera:
   // - addExpenseRepo({ expense: {...}, userId, ... })
   // - addExpenseRepo({ date, concept, amount, ... })
   const expense = (payloadOrExpense as any)?.expense ?? payloadOrExpense;
+  const plan = await resolveSensitiveOperationPlan('expenses:add');
 
-  if (await isMySqlEnabled()) {
+  if (plan.mode === 'mysql') {
     return await addExpenseMySql(expense);
   }
 
-  return await addExpense(expense);
+  const id = await addExpense(expense);
+  markFallbackOperation(plan, {
+    expenseId: id,
+    amount: (expense as any)?.amount,
+    concept: (expense as any)?.concept,
+    date: (expense as any)?.date,
+  });
+
+  return id;
 };
 
 export const listExpensesRepo = async (from: string, to: string): Promise<any[]> => {
-  if (await isMySqlEnabled()) {
+  const plan = await resolveSensitiveOperationPlan('expenses:add');
+
+  if (plan.mode === 'mysql') {
     const rows = await listExpensesMySql(from, to);
     return Array.isArray(rows) ? rows : [];
   }
