@@ -64,3 +64,19 @@ En la regresión multi-sender se valida explícitamente que:
 - `auth:logout` en una ventana invalida solo su contexto local.
 - `destroyed` de una ventana limpia solo su contexto, sin tocar otras sesiones activas.
 - Re-login en un sender reemplaza únicamente su propio contexto y no contamina el de otros senders.
+
+## Regresión de ruta crítica por rol (ADMIN / SUPERVISOR / SELLER)
+
+Se añadió cobertura de regresión sobre un set mínimo de IPC sensibles para detectar drift de autorización:
+
+- `users:list`, `users:create`
+- `config:set`
+- `mysql:test`
+- `backups:export`
+- `sync:status:get`
+- `products:list`, `sales:create`, `cash:get-status`
+
+Decisión ante ambigüedad:
+
+- Se respetó la matriz actual de `shared/permissions.ts` sin alterarla.
+- En particular, `SUPERVISOR` no tiene permisos de `users:*` ni `config:write`, y los tests fijan ese comportamiento esperado.
