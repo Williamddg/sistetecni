@@ -84,6 +84,11 @@ export const autoDetectAndConfigureMySQL = async (): Promise<AutoDetectResult> =
     return { status: "ready" };
   }
 
+  if (process.platform !== 'win32') {
+    console.log('[autodetect] Plataforma no-Windows: omitiendo señales NSIS y usando modo manual');
+    return { status: 'manual' };
+  }
+
   // ¿El NSIS guardó el tipo de instalación?
   const installType = readJson<InstallTypeInfo>("install-type.json");
 
