@@ -1,4 +1,4 @@
-import { readMySqlConfig } from '../../db/mysqlConfig';
+import { isMySqlEnabledResolved } from '../../db/databaseModeResolver';
 
 import type { AuditLogAction, AuditEntityType } from '../../db/queries';
 
@@ -21,28 +21,22 @@ import {
   changeUserPassword as changeUserPasswordSqlite,
 } from '../../db/queries';
 
-export const hasMySqlConfig = (): boolean => {
-  const cfg = readMySqlConfig();
-  return !!(
-    cfg &&
-    String(cfg.host ?? '').trim() &&
-    String(cfg.user ?? '').trim() &&
-    String(cfg.database ?? '').trim()
-  );
+export const hasMySqlConfig = async (): Promise<boolean> => {
+  return await isMySqlEnabledResolved();
 };
 
 export const listUsersService = async (): Promise<unknown[]> => {
-  return hasMySqlConfig() ? await listUsersMySql() : listUsersSqlite();
+  return (await hasMySqlConfig()) ? await listUsersMySql() : listUsersSqlite();
 };
 
 export const listUsersBasicService = async (): Promise<unknown[]> => {
-  return hasMySqlConfig() ? await listUsersBasicMySql() : listUsersBasicSqlite();
+  return (await hasMySqlConfig()) ? await listUsersBasicMySql() : listUsersBasicSqlite();
 };
 
 export const createUserService = async (payload: any): Promise<string> => {
   const user = (payload as any)?.user ?? payload;
   const actorId = String((payload as any)?.userId ?? '');
-  const useMySql = hasMySqlConfig();
+  const useMySql = await hasMySqlConfig();
 
   const id = useMySql ? await createUserMySql(user) : createUserSqlite(user);
 
@@ -73,7 +67,7 @@ export const createUserService = async (payload: any): Promise<string> => {
 export const resetUserPasswordService = async (payload: any): Promise<{ ok: true }> => {
   const data = (payload as any)?.data ?? payload;
   const actorId = String((payload as any)?.userId ?? '');
-  const useMySql = hasMySqlConfig();
+  const useMySql = await hasMySqlConfig();
 
   if (useMySql) await resetUserPasswordMySql(data);
   else resetUserPasswordSqlite(data);
@@ -118,7 +112,7 @@ export const changeUserPasswordService = async (payload: any): Promise<{ ok: tru
     throw new Error('La contraseña debe tener mínimo 6 caracteres');
   }
 
-  const useMySql = hasMySqlConfig();
+  const useMySql = await hasMySqlConfig();
 
   if (useMySql) {
     await changeUserPasswordMySql({ id: targetId, currentPassword, newPassword });

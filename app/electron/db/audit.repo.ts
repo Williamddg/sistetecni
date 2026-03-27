@@ -15,7 +15,7 @@ export const logAuditRepo = async (input: {
   entityId?: string | null;
   metadata?: unknown;
 }): Promise<string> => {
-  if (isMySqlEnabled()) return await logAuditMySql(input);
+  if (await isMySqlEnabled()) return await logAuditMySql(input);
   return logAudit(input);
 };
 
@@ -27,6 +27,6 @@ export const listAuditLogsRepo = async (filters: {
   limit?: number;
   offset?: number;
 }): Promise<any[]> => {
-  if (isMySqlEnabled()) return await listAuditLogsMySql(filters);
+  if (await isMySqlEnabled()) return await listAuditLogsMySql(filters);
   return listAuditLogs(filters) as any[];
 };

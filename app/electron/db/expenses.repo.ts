@@ -12,7 +12,7 @@ export const addExpenseRepo = async (payloadOrExpense: any): Promise<string> => 
   // - addExpenseRepo({ date, concept, amount, ... })
   const expense = (payloadOrExpense as any)?.expense ?? payloadOrExpense;
 
-  if (isMySqlEnabled()) {
+  if (await isMySqlEnabled()) {
     return await addExpenseMySql(expense);
   }
 
@@ -20,7 +20,7 @@ export const addExpenseRepo = async (payloadOrExpense: any): Promise<string> => 
 };
 
 export const listExpensesRepo = async (from: string, to: string): Promise<any[]> => {
-  if (isMySqlEnabled()) {
+  if (await isMySqlEnabled()) {
     const rows = await listExpensesMySql(from, to);
     return Array.isArray(rows) ? rows : [];
   }
