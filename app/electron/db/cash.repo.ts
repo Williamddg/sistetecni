@@ -8,7 +8,14 @@ export const openCashRepo = async (data: any): Promise<string> => {
   if (plan.mode === 'mysql') return await openCashMySql(data);
 
   const id = openCash(data);
-  markFallbackOperation(plan, { cashSessionId: id, openingCash: (data as any)?.openingCash });
+  markFallbackOperation(plan, {
+    schemaVersion: 2,
+    input: {
+      ...(data as any),
+      id,
+    },
+    sqliteRef: { cashSessionId: id },
+  });
   return id;
 };
 
@@ -36,6 +43,15 @@ export const closeCashRepo = async (data: any): Promise<any> => {
   if (plan.mode === 'mysql') return await closeCashMySql(data);
 
   const result = closeCash(data);
-  markFallbackOperation(plan, { cashSessionId: (data as any)?.id, closeResult: result });
+  markFallbackOperation(plan, {
+    schemaVersion: 2,
+    input: {
+      ...(data as any),
+    },
+    sqliteRef: {
+      cashSessionId: (data as any)?.id,
+      closeResult: result,
+    },
+  });
   return result;
 };

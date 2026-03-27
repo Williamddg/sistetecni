@@ -20,10 +20,12 @@ export const logAuditRepo = async (input: {
 
   const id = logAudit(input);
   markFallbackOperation(plan, {
-    auditId: id,
-    action: input.action,
-    entityType: input.entityType,
-    entityId: input.entityId ?? null,
+    schemaVersion: 2,
+    input: {
+      ...input,
+      id,
+    },
+    sqliteRef: { auditId: id },
   });
 
   return id;

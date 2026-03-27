@@ -18,10 +18,12 @@ export const addExpenseRepo = async (payloadOrExpense: any): Promise<string> => 
 
   const id = await addExpense(expense);
   markFallbackOperation(plan, {
-    expenseId: id,
-    amount: (expense as any)?.amount,
-    concept: (expense as any)?.concept,
-    date: (expense as any)?.date,
+    schemaVersion: 2,
+    input: {
+      ...(expense as any),
+      id,
+    },
+    sqliteRef: { expenseId: id },
   });
 
   return id;

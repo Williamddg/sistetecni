@@ -1,4 +1,5 @@
 import { getDb, getDbMode } from '../db/db';
+import { runFallbackResyncCycle } from '../db/fallbackSync';
 import { ensureDailyBackup } from '../ipc/backups.ipc';
 import { registerDomainIpcHandlers, registerEarlyIpcHandlers } from './ipc.bootstrap';
 import { createMainWindow } from './window.bootstrap';
@@ -18,6 +19,14 @@ export const runAppBootstrap = async (): Promise<void> => {
   await checkForAppUpdates();
 
   setInterval(async () => {
-    console.log('DB MODE:', await getDbMode());
-  }, 3000);
+    const dbMode = await getDbMode();
+    console.log('DB MODE:', dbMode);
+
+    if (dbMode === 'mysql') {
+      const syncResult = await runFallbackResyncCycle({ limit: 25 });
+      if (syncResult.attempted > 0) {
+        console.log('[fallback-sync]', syncResult);
+      }
+    }
+  }, 5000);
 };

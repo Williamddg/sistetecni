@@ -41,7 +41,12 @@ const ensureFallbackOperationsTable = (): void => {
       payload_json TEXT NOT NULL,
       resolution TEXT NOT NULL,
       created_at TEXT NOT NULL,
-      synced INTEGER NOT NULL DEFAULT 0
+      synced INTEGER NOT NULL DEFAULT 0,
+      synced_at TEXT,
+      sync_status TEXT NOT NULL DEFAULT 'pending',
+      sync_attempts INTEGER NOT NULL DEFAULT 0,
+      last_attempt_at TEXT,
+      last_error TEXT
     )
   `).run();
 

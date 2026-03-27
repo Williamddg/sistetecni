@@ -11,10 +11,15 @@ export const createSaleRepo = async (input: any): Promise<{ saleId: string; invo
 
   const result = createSale(input);
   markFallbackOperation(plan, {
-    saleId: result.saleId,
-    invoiceNumber: result.invoiceNumber,
-    total: (input as any)?.total,
-    paymentMethod: (input as any)?.paymentMethod,
+    schemaVersion: 2,
+    input: {
+      ...(input as any),
+      id: result.saleId,
+    },
+    sqliteRef: {
+      saleId: result.saleId,
+      invoiceNumber: result.invoiceNumber,
+    },
   });
 
   return result;
