@@ -106,4 +106,9 @@ export const api = {
     listPrinters: () => ipcRenderer.invoke('cashdrawer:list-printers'),
     open: (payload: unknown) => ipcRenderer.invoke('cashdrawer:open', payload),
   },
+
+  syncAdmin: {
+    status: () => ipcRenderer.invoke('sync:status:get'),
+    runManual: (payload: { limit?: number } = {}) => ipcRenderer.invoke('sync:run-manual', payload),
+  },
 };
