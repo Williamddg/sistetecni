@@ -11,6 +11,18 @@ import {
   getSaleDetailByMode,
   returnSaleByMode,
 } from '../modules/sales/sales.service';
+import { requirePermissionFromPayload } from './rbac';
+import {
+  createSaleWithAuditAndInvoice,
+  printInvoiceFromPayload,
+  suspendSaleByMode,
+  listSuspendedSalesByMode,
+  getSuspendedSaleByMode,
+  deleteSuspendedSaleByMode,
+  listRecentSalesByMode,
+  getSaleDetailByMode,
+  returnSaleByMode,
+} from '../modules/sales/sales.service';
 import { BrowserWindow, ipcMain } from 'electron';
 import { requirePermissionFromPayload } from './rbac';
 import { generateInvoicePdf } from '../invoice/invoicePdf';
