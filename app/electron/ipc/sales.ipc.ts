@@ -1,13 +1,10 @@
-import { BrowserWindow, ipcMain, shell } from 'electron';
+import { BrowserWindow, ipcMain } from 'electron';
 import { requirePermissionFromPayload } from './rbac';
 import { generateInvoicePdf } from '../invoice/invoicePdf';
 import { createSaleRepo } from '../db/sales.repo';
 import { logAuditRepo } from '../db/audit.repo';
 import { getDbMode } from '../db/db';
 
-import fs from 'node:fs';
-import path from 'node:path';
-import os from 'node:os';
 
 import {
   suspendSale,
@@ -25,9 +22,8 @@ import {
   deleteSuspendedSaleMySql,
   listRecentSalesMySql,
   getSaleDetailMySql,
+  returnSaleMySql,
 } from '../db/mysql/sales.mysql';
-
-import { returnSaleMySql } from '../db/mysql/sales.mysql';
 
 export const registerSalesIpc = (): void => {
   console.log('[SALES IPC] registerSalesIpc OK');
