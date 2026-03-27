@@ -8,16 +8,19 @@ import {
 } from '../db/mysqlConfig';
 import { testMySqlConnection } from '../db/mysql';
 import { initMySqlSchema } from '../db/mysql/initSchema.mysql';
+import { requirePermissionFromEvent } from './rbac';
 
 export const registerMySqlIpc = (): void => {
   // ✅ Log para confirmar que este archivo sí se está ejecutando
   console.log('[MYSQL IPC] registerMySqlIpc OK ✅');
 
-  ipcMain.handle('mysql:config:get', async () => {
+  ipcMain.handle('mysql:config:get', async (event) => {
+    requirePermissionFromEvent(event, 'config:write');
     return readMySqlConfig();
   });
 
-  ipcMain.handle('mysql:config:set', async (_e, cfg: MySqlConfig) => {
+  ipcMain.handle('mysql:config:set', async (event, cfg: MySqlConfig) => {
+    requirePermissionFromEvent(event, 'config:write');
     // ✅ Validación rápida para evitar guardar basura
     if (!cfg?.host || !cfg?.user || !cfg?.database) {
       throw new Error('Config MySQL incompleta (host/user/database son obligatorios)');
@@ -36,18 +39,21 @@ export const registerMySqlIpc = (): void => {
     return { ok: true, path: getMySqlConfigPath() };
   });
 
-  ipcMain.handle('mysql:config:clear', async () => {
+  ipcMain.handle('mysql:config:clear', async (event) => {
+    requirePermissionFromEvent(event, 'config:write');
     const p = getMySqlConfigPath();
     if (fs.existsSync(p)) fs.unlinkSync(p);
     return { ok: true };
   });
 
-  ipcMain.handle('mysql:test', async () => {
+  ipcMain.handle('mysql:test', async (event) => {
+    requirePermissionFromEvent(event, 'config:write');
     return await testMySqlConnection();
   });
 
   // ✅ NUEVO: crear DB + tablas + admin
-  ipcMain.handle('mysql:init-schema', async () => {
+  ipcMain.handle('mysql:init-schema', async (event) => {
+    requirePermissionFromEvent(event, 'config:write');
     console.log('[MYSQL IPC] mysql:init-schema llamado ✅');
     return await initMySqlSchema();
   });
