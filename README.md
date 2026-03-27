@@ -32,3 +32,7 @@ npm run package
 - `Admin123*`
 
 > Cambiar contraseña desde Settings (pendiente UI completa de usuarios para siguientes iteraciones).
+
+## Documentación operativa
+- Manual multicaja (legacy operativo): `docs/operations/manual-instalacion-multicaja.txt`
+- Script SQL de setup MySQL: `docs/sql/setup-sistetecni-pos.sql`
