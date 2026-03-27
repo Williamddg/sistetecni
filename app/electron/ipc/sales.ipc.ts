@@ -11,6 +11,44 @@ import {
   getSaleDetailByMode,
   returnSaleByMode,
 } from '../modules/sales/sales.service';
+import { requirePermissionFromPayload } from './rbac';
+import {
+  createSaleWithAuditAndInvoice,
+  printInvoiceFromPayload,
+  suspendSaleByMode,
+  listSuspendedSalesByMode,
+  getSuspendedSaleByMode,
+  deleteSuspendedSaleByMode,
+  listRecentSalesByMode,
+  getSaleDetailByMode,
+  returnSaleByMode,
+} from '../modules/sales/sales.service';
+import { BrowserWindow, ipcMain } from 'electron';
+import { requirePermissionFromPayload } from './rbac';
+import { generateInvoicePdf } from '../invoice/invoicePdf';
+import { createSaleRepo } from '../db/sales.repo';
+import { logAuditRepo } from '../db/audit.repo';
+import { getDbMode } from '../db/db';
+
+
+import {
+  suspendSale,
+  listSuspendedSales,
+  getSuspendedSale,
+  deleteSuspendedSale,
+  listRecentSales,
+  getSaleDetail,
+} from '../db/queries';
+
+import {
+  suspendSaleMySql,
+  listSuspendedSalesMySql,
+  getSuspendedSaleMySql,
+  deleteSuspendedSaleMySql,
+  listRecentSalesMySql,
+  getSaleDetailMySql,
+  returnSaleMySql,
+} from '../db/mysql/sales.mysql';
 
 export const registerSalesIpc = (): void => {
   console.log('[SALES IPC] registerSalesIpc OK');
