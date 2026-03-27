@@ -7,6 +7,9 @@ const authUserMock = jest.fn(async (email: string) => {
   if (email === 'admin@test.com') {
     return { id: 'admin-1', name: 'Admin', email, role: 'ADMIN' as const };
   }
+  if (email === 'admin2@test.com') {
+    return { id: 'admin-2', name: 'Admin 2', email, role: 'ADMIN' as const };
+  }
   if (email === 'seller@test.com') {
     return { id: 'seller-1', name: 'Seller', email, role: 'SELLER' as const };
   }
@@ -72,5 +75,50 @@ describe('secure session lifecycle in main process', () => {
 
     await (ipcMain as any).__invokeAs(303, 'auth:login', 'seller@test.com', 'x');
     await expect((ipcMain as any).__invokeAs(303, 'mysql:config:get')).rejects.toThrow('FORBIDDEN');
+  });
+
+  test('two simultaneous senders keep isolated sessions with different roles', async () => {
+    await (ipcMain as any).__invokeAs(401, 'auth:login', 'admin@test.com', 'x');
+    await (ipcMain as any).__invokeAs(402, 'auth:login', 'seller@test.com', 'x');
+
+    await expect((ipcMain as any).__invokeAs(401, 'mysql:config:get')).resolves.toEqual({});
+    await expect((ipcMain as any).__invokeAs(402, 'mysql:config:get')).rejects.toThrow('FORBIDDEN');
+  });
+
+  test('authenticated sender does not grant access to unauthenticated sender', async () => {
+    await (ipcMain as any).__invokeAs(501, 'auth:login', 'admin@test.com', 'x');
+
+    await expect((ipcMain as any).__invokeAs(501, 'mysql:config:get')).resolves.toEqual({});
+    await expect((ipcMain as any).__invokeAs(502, 'mysql:config:get')).rejects.toThrow('FORBIDDEN');
+  });
+
+  test('logout in one sender does not affect active session in another sender', async () => {
+    await (ipcMain as any).__invokeAs(601, 'auth:login', 'admin@test.com', 'x');
+    await (ipcMain as any).__invokeAs(602, 'auth:login', 'admin2@test.com', 'x');
+
+    await (ipcMain as any).__invokeAs(601, 'auth:logout');
+
+    await expect((ipcMain as any).__invokeAs(601, 'mysql:config:get')).rejects.toThrow('FORBIDDEN');
+    await expect((ipcMain as any).__invokeAs(602, 'mysql:config:get')).resolves.toEqual({});
+  });
+
+  test('destroying one sender clears only that sender context', async () => {
+    await (ipcMain as any).__invokeAs(701, 'auth:login', 'admin@test.com', 'x');
+    await (ipcMain as any).__invokeAs(702, 'auth:login', 'admin2@test.com', 'x');
+
+    (ipcMain as any).__destroySender(701);
+
+    await expect((ipcMain as any).__invokeAs(701, 'mysql:config:get')).rejects.toThrow('FORBIDDEN');
+    await expect((ipcMain as any).__invokeAs(702, 'mysql:config:get')).resolves.toEqual({});
+  });
+
+  test('re-login in one sender does not contaminate another sender session', async () => {
+    await (ipcMain as any).__invokeAs(801, 'auth:login', 'admin@test.com', 'x');
+    await (ipcMain as any).__invokeAs(802, 'auth:login', 'admin2@test.com', 'x');
+
+    await (ipcMain as any).__invokeAs(801, 'auth:login', 'seller@test.com', 'x');
+
+    await expect((ipcMain as any).__invokeAs(801, 'mysql:config:get')).rejects.toThrow('FORBIDDEN');
+    await expect((ipcMain as any).__invokeAs(802, 'mysql:config:get')).resolves.toEqual({});
   });
 });

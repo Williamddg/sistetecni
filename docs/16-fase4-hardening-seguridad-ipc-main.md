@@ -54,3 +54,13 @@ Riesgo principal:
 - Bloqueo de re-ejecución de installer sin autenticación cuando la instalación ya existe.
 - Logout explícito + bloqueo posterior de IPC sensible.
 - Limpieza automática de contexto al destruirse `webContents`.
+
+## Garantías de aislamiento multi-ventana (por sender/webContents)
+
+En la regresión multi-sender se valida explícitamente que:
+
+- Dos ventanas simultáneas mantienen sesiones independientes (roles distintos no se mezclan).
+- Una ventana autenticada no autoriza a otra ventana no autenticada.
+- `auth:logout` en una ventana invalida solo su contexto local.
+- `destroyed` de una ventana limpia solo su contexto, sin tocar otras sesiones activas.
+- Re-login en un sender reemplaza únicamente su propio contexto y no contamina el de otros senders.
