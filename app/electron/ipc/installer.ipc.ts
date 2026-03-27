@@ -4,7 +4,7 @@
  * Handlers IPC para el wizard de instalación.
  */
 
-import { ipcMain, BrowserWindow } from 'electron';
+import { ipcMain, BrowserWindow, type IpcMainInvokeEvent } from 'electron';
 import {
   runInstaller,
   checkDbInstalled,
@@ -13,6 +13,22 @@ import {
 import { writeMySqlConfig, readMySqlConfig } from '../db/mysqlConfig';
 import { testMySqlConnection } from '../db/mysql';
 import type { MySqlConfig } from '../db/mysqlConfig';
+import { getAuthContextForEvent } from './authContext';
+import { requirePermissionFromEvent } from './rbac';
+
+const assertInstallerRunAllowed = async (
+  event: IpcMainInvokeEvent,
+  mysql: MySqlConfig,
+): Promise<void> => {
+  const trusted = getAuthContextForEvent(event);
+  if (trusted) {
+    requirePermissionFromEvent(event, 'config:write');
+    return;
+  }
+
+  const status = await checkDbInstalled(mysql);
+  if (status.installed) throw new Error('FORBIDDEN');
+};
 
 export const registerInstallerIpc = (): void => {
   ipcMain.handle('installer:test-connection', async (_e, cfg: MySqlConfig) => {
@@ -37,6 +53,7 @@ export const registerInstallerIpc = (): void => {
         companyName?: string;
       },
     ) => {
+      await assertInstallerRunAllowed(event, payload.mysql);
       writeMySqlConfig(payload.mysql);
 
       const win = BrowserWindow.fromWebContents(event.sender);
