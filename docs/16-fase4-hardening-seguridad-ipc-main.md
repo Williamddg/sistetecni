@@ -12,6 +12,8 @@ Riesgo principal:
 
 1. **Contexto autenticado en Main Process por `webContents`**
    - Al hacer `auth:login`, el Main Process guarda `userId/role` confiables para ese emisor.
+   - Se agrega invalidación explícita aditiva por `auth:logout`.
+   - Se agrega limpieza automática cuando el `webContents` del emisor se destruye.
 2. **RBAC basado en contexto confiable**
    - `requirePermissionFromPayload(event, payload, permission)` ahora exige sesión autenticada del emisor.
    - Si payload trae `role`/`userId`, deben coincidir con el contexto confiable (anti-spoofing).
@@ -36,10 +38,10 @@ Riesgo principal:
 - `sync:status:get`
 - `sync:run-manual`
 - `installer:run`
+- `auth:logout` (aditivo, para invalidación explícita de sesión backend)
 
 ## Limitaciones restantes (transparentes)
 
-- No hay canal de logout explícito para limpiar contexto por sesión (se puede agregar en siguiente ronda sin romper contratos actuales).
 - El contexto vive en memoria del proceso principal (se reinicia al reiniciar la app).
 - Este hardening se centra en IPC Main/Renderer; no reemplaza controles OS-level o políticas de distribución.
 
@@ -50,3 +52,5 @@ Riesgo principal:
 - Verificación de permisos por rol para canales administrativos.
 - Protección de identidad en `users:change-password`.
 - Bloqueo de re-ejecución de installer sin autenticación cuando la instalación ya existe.
+- Logout explícito + bloqueo posterior de IPC sensible.
+- Limpieza automática de contexto al destruirse `webContents`.

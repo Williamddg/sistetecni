@@ -24,6 +24,7 @@ export const api = {
 
   auth: {
     login: (email: string, password: string) => ipcRenderer.invoke('auth:login', email, password),
+    logout: () => ipcRenderer.invoke('auth:logout'),
   },
 
   license: {

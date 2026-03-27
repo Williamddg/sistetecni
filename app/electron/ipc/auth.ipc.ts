@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron';
 import { authUser } from '../db/queries';
-import { setAuthContextForEvent } from './authContext';
+import { clearAuthContextForEvent, setAuthContextForEvent } from './authContext';
 
 export const registerAuthIpc = (): void => {
   ipcMain.handle('auth:login', async (event, email: string, password: string) => {
@@ -9,5 +9,10 @@ export const registerAuthIpc = (): void => {
     if (!user) throw new Error('Credenciales inválidas');
     setAuthContextForEvent(event, user);
     return user;
+  });
+
+  ipcMain.handle('auth:logout', async (event) => {
+    clearAuthContextForEvent(event);
+    return { ok: true };
   });
 };
