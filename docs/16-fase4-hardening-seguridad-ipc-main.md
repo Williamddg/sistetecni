@@ -80,3 +80,11 @@ Decisión ante ambigüedad:
 
 - Se respetó la matriz actual de `shared/permissions.ts` sin alterarla.
 - En particular, `SUPERVISOR` no tiene permisos de `users:*` ni `config:write`, y los tests fijan ese comportamiento esperado.
+
+## Sub-suite de cierre: payload spoofing vs contexto confiable
+
+Cobertura explícita de mismatch entre payload y sesión confiable en canales críticos:
+
+- `users:create`: bloqueo de elevación de privilegios cuando `payload.role` intenta pasar de `SELLER` a `ADMIN`.
+- `config:set`: bloqueo de `payload.userId` falso aunque el sender tenga rol `ADMIN`.
+- `cash:get-status`: validación de que la decisión de permiso usa el contexto confiable del sender y no el `role` falsificado en payload.
