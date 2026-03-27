@@ -37,7 +37,7 @@ MySQL80 DEBE DECIR RUNNINGG
 
 CAPIAR ARCHIVO SETUP_SISTETECNI_POS.SQL
 EJECUTAR DESDE CMD :
-mysql -u root -p < C:\RUTA\setup_sistetecni_pos.sql
+mysql -u root -p < <repo>/docs/sql/setup-sistetecni-pos.sql
 CONTRASEÑA DEL ROOT
 ABRIR :C:\ProgramData\MySQL\MySQL Server 8.0\my.ini
 VERIFICAR
