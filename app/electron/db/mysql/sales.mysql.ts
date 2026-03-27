@@ -79,7 +79,7 @@ export async function createSaleMySql(input: any): Promise<{ saleId: string; inv
   try {
     await conn.beginTransaction();
 
-    const saleId = uuid();
+    const saleId = String((input as any)?.id ?? uuid());
     const now = toLocalMySqlDateTime(new Date());
     const year = new Date().getFullYear();
 
@@ -132,7 +132,7 @@ export async function createSaleMySql(input: any): Promise<{ saleId: string; inv
             (id, sale_id, product_id, qty, unit_price, line_total, description, unit_cost)
            VALUES
             (?,  ?,       NULL,      ?,   ?,          ?,          ?,          ?)`,
-          [uuid(), saleId, qty, unitPrice, lineTotal, description, unitCost],
+          [String((item as any)?.id ?? uuid()), saleId, qty, unitPrice, lineTotal, description, unitCost],
         );
 
         continue;
@@ -165,7 +165,7 @@ export async function createSaleMySql(input: any): Promise<{ saleId: string; inv
          VALUES
           (?,  ?,       ?,          ?,   ?,          ?,          ?,           ?)`,
         [
-          uuid(),
+          String((item as any)?.id ?? uuid()),
           saleId,
           item.product_id,
           qty,

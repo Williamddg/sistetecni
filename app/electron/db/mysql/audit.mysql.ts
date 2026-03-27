@@ -10,7 +10,7 @@ export async function logAuditMySql(input: {
   metadata?: unknown;
 }): Promise<string> {
   const pool = getMySqlPool();
-  const id = uuid();
+  const id = String((input as any)?.id ?? uuid());
   const createdAt = new Date().toISOString().slice(0, 19).replace('T', ' '); // 'YYYY-MM-DD HH:MM:SS'
 
   await pool.query(

@@ -1,10 +1,26 @@
-import { isMySqlEnabled } from './dbRouter';
 import { createSale } from './queries'; // SQLite
 import { createSaleMySql } from './mysql/sales.mysql';
+import { markFallbackOperation, resolveSensitiveOperationPlan } from './fallbackControl';
 
 export const createSaleRepo = async (input: any): Promise<{ saleId: string; invoiceNumber: string }> => {
-  if (isMySqlEnabled()) {
+  const plan = await resolveSensitiveOperationPlan('sales:create');
+
+  if (plan.mode === 'mysql') {
     return await createSaleMySql(input);
   }
-  return createSale(input);
+
+  const result = createSale(input);
+  markFallbackOperation(plan, {
+    schemaVersion: 2,
+    input: {
+      ...(input as any),
+      id: result.saleId,
+    },
+    sqliteRef: {
+      saleId: result.saleId,
+      invoiceNumber: result.invoiceNumber,
+    },
+  });
+
+  return result;
 };

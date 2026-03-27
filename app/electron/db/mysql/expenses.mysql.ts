@@ -16,7 +16,7 @@ function toEndOfDay(to: string): string {
 export const addExpenseMySql = async (data: any): Promise<string> => {
   const pool = getMySqlPool();
 
-  const id = uuid();
+  const id = String((data as any)?.id ?? uuid());
   const now = new Date();
 
   // si te mandan date, úsala; si no, usa now

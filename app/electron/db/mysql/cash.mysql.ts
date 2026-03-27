@@ -43,7 +43,7 @@ export const openCashMySql = async (data: {
     throw new Error('Ya existe una caja abierta. Debes cerrarla antes de abrir una nueva.');
   }
 
-  const id = uuid();
+  const id = String((data as any)?.id ?? uuid());
   const openedAt = mysqlLocalDateTime();
 
   await mysqlExec(
