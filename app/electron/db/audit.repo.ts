@@ -1,5 +1,3 @@
-import { isMySqlEnabled } from './dbRouter';
-
 // SQLite
 import { logAudit, listAuditLogs } from './queries';
 
@@ -7,6 +5,7 @@ import { logAudit, listAuditLogs } from './queries';
 import { logAuditMySql, listAuditLogsMySql } from './mysql/audit.mysql';
 
 import type { AuditEntityType, AuditLogAction } from './audit.types';
+import { markFallbackOperation, resolveSensitiveOperationPlan } from './fallbackControl';
 
 export const logAuditRepo = async (input: {
   actorId: string;
@@ -15,8 +14,19 @@ export const logAuditRepo = async (input: {
   entityId?: string | null;
   metadata?: unknown;
 }): Promise<string> => {
-  if (isMySqlEnabled()) return await logAuditMySql(input);
-  return logAudit(input);
+  const plan = await resolveSensitiveOperationPlan('audit:log');
+
+  if (plan.mode === 'mysql') return await logAuditMySql(input);
+
+  const id = logAudit(input);
+  markFallbackOperation(plan, {
+    auditId: id,
+    action: input.action,
+    entityType: input.entityType,
+    entityId: input.entityId ?? null,
+  });
+
+  return id;
 };
 
 export const listAuditLogsRepo = async (filters: {
@@ -27,6 +37,8 @@ export const listAuditLogsRepo = async (filters: {
   limit?: number;
   offset?: number;
 }): Promise<any[]> => {
-  if (isMySqlEnabled()) return await listAuditLogsMySql(filters);
+  const plan = await resolveSensitiveOperationPlan('audit:log');
+
+  if (plan.mode === 'mysql') return await listAuditLogsMySql(filters);
   return listAuditLogs(filters) as any[];
 };

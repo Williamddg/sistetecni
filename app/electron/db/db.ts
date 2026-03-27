@@ -3,7 +3,7 @@ import { app } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { runMigrations, seedDefaultAdmin } from './migrations';
-import { testMySqlConnection } from './mysql';
+import { resolveEffectiveDbMode } from './databaseModeResolver';
 
 let dbInstance: Database.Database | null = null;
 let dbOverrideForTests: Database.Database | null = null;
@@ -74,43 +74,9 @@ export const getDb = (): Database.Database => {
 };
 
 /**
- * Decide si trabajamos MYSQL o SQLITE.
- * - Si el usuario eligió dbMode=mysql y la config está completa => intenta conectar.
- * - Si no => SQLITE.
+ * Compatibilidad: mantiene contrato vigente (mysql|sqlite),
+ * delegando toda la resolución al DatabaseModeResolver.
  */
-let cachedMode: 'mysql' | 'sqlite' = 'sqlite';
-let lastModeCheck = 0;
-
 export const getDbMode = async (): Promise<'mysql' | 'sqlite'> => {
-  const now = Date.now();
-  if (now - lastModeCheck < 3000) return cachedMode; // cache 3s
-  lastModeCheck = now;
-
-  const cfg = readAppConfig();
-  const desired = cfg?.dbMode ?? 'sqlite';
-
-  // Si el usuario NO eligió mysql => no probamos nada
-  if (desired !== 'mysql') {
-    cachedMode = 'sqlite';
-    return cachedMode;
-  }
-
-  // Validar config mínima
-  const m = cfg?.mysql;
-  if (!m?.host || !m?.user || !m?.password || !m?.database) {
-    cachedMode = 'sqlite';
-    return cachedMode;
-  }
-
-  // Probar conexión
-  const t = await testMySqlConnection({
-    host: m.host,
-    user: m.user,
-    password: m.password,
-    database: m.database,
-    port: m.port ?? 3306,
-  });
-
-  cachedMode = t.ok ? 'mysql' : 'sqlite';
-  return cachedMode;
+  return await resolveEffectiveDbMode();
 };
