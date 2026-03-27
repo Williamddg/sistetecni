@@ -1,4 +1,4 @@
-import { logAudit } from '../../db/queries';
+import { logAuditRepo } from '../../db/audit.repo';
 import {
   archiveProductRepo,
   listPosProductsRepo,
@@ -31,7 +31,7 @@ export const saveProductService = async (payload: any): Promise<string> => {
   const actorId = String((payload as any)?.userId ?? '');
   if (actorId) {
     try {
-      logAudit({
+      await logAuditRepo({
         actorId,
         action: 'PRODUCT_SAVE',
         entityType: 'PRODUCT',
@@ -59,7 +59,7 @@ export const updateProductService = async (payload: any): Promise<{ ok: true; id
   const actorId = String((payload as any)?.userId ?? '');
   if (actorId) {
     try {
-      logAudit({
+      await logAuditRepo({
         actorId,
         action: 'PRODUCT_UPDATE',
         entityType: 'PRODUCT',
@@ -85,7 +85,7 @@ export const archiveProductService = async (payload: any): Promise<boolean> => {
   const actorId = String((payload as any)?.userId ?? '');
   if (actorId) {
     try {
-      logAudit({
+      await logAuditRepo({
         actorId,
         action: 'PRODUCT_DELETE',
         entityType: 'PRODUCT',
