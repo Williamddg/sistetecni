@@ -3,7 +3,7 @@ import { createSale } from './queries'; // SQLite
 import { createSaleMySql } from './mysql/sales.mysql';
 
 export const createSaleRepo = async (input: any): Promise<{ saleId: string; invoiceNumber: string }> => {
-  if (isMySqlEnabled()) {
+  if (await isMySqlEnabled()) {
     return await createSaleMySql(input);
   }
   return createSale(input);

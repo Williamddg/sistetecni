@@ -1,229 +1,62 @@
-import { BrowserWindow, ipcMain, shell } from 'electron';
+import { ipcMain } from 'electron';
 import { requirePermissionFromPayload } from './rbac';
-import { generateInvoicePdf } from '../invoice/invoicePdf';
-import { createSaleRepo } from '../db/sales.repo';
-import { logAuditRepo } from '../db/audit.repo';
-import { getDbMode } from '../db/db';
-
-import fs from 'node:fs';
-import path from 'node:path';
-import os from 'node:os';
-
 import {
-  suspendSale,
-  listSuspendedSales,
-  getSuspendedSale,
-  deleteSuspendedSale,
-  listRecentSales,
-  getSaleDetail,
-} from '../db/queries';
-
-import {
-  suspendSaleMySql,
-  listSuspendedSalesMySql,
-  getSuspendedSaleMySql,
-  deleteSuspendedSaleMySql,
-  listRecentSalesMySql,
-  getSaleDetailMySql,
-} from '../db/mysql/sales.mysql';
-
-import { returnSaleMySql } from '../db/mysql/sales.mysql';
+  createSaleWithAuditAndInvoice,
+  printInvoiceFromPayload,
+  suspendSaleByMode,
+  listSuspendedSalesByMode,
+  getSuspendedSaleByMode,
+  deleteSuspendedSaleByMode,
+  listRecentSalesByMode,
+  getSaleDetailByMode,
+  returnSaleByMode,
+} from '../modules/sales/sales.service';
 
 export const registerSalesIpc = (): void => {
   console.log('[SALES IPC] registerSalesIpc OK');
 
   ipcMain.handle('sales:create', async (_e, payload) => {
     requirePermissionFromPayload(payload, 'pos:sell');
-
-    const salePayload = (payload as any)?.sale ?? payload;
-    const result = await createSaleRepo(salePayload);
-
-    const actorId = String((payload as any)?.userId ?? salePayload?.userId ?? '');
-    if (actorId) {
-      try {
-        await logAuditRepo({
-          actorId,
-          action: 'SALE_CREATE',
-          entityType: 'SALE',
-          entityId: result.saleId,
-          metadata: {
-            invoiceNumber: result.invoiceNumber,
-            total: salePayload?.total,
-            paymentMethod: salePayload?.paymentMethod,
-          },
-        });
-      } catch (err) {
-        console.warn('[audit] SALE_CREATE failed:', err);
-      }
-    }
-
-    const pdf = await generateInvoicePdf({
-      ...salePayload,
-      invoiceNumber: result.invoiceNumber,
-    });
-
-    return { ...result, pdf };
+    return await createSaleWithAuditAndInvoice(payload);
   });
 
   ipcMain.handle('sales:print-invoice', async (_e, payload) => {
-  requirePermissionFromPayload(payload, 'pos:sell');
-
-  const html =
-    typeof payload === 'string'
-      ? payload
-      : String((payload as any)?.html ?? '');
-
-  const win = new BrowserWindow({
-    show: false,
-    autoHideMenuBar: true,
-    webPreferences: {
-      sandbox: false,
-    },
+    requirePermissionFromPayload(payload, 'pos:sell');
+    return await printInvoiceFromPayload(payload);
   });
-
-  try {
-    await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
-
-    await new Promise((resolve) => setTimeout(resolve, 350));
-
-    await new Promise<void>((resolve, reject) => {
-      win.webContents.print(
-        {
-          silent: false,
-          printBackground: true,
-          margins: {
-            marginType: 'none',
-          },
-          pageSize: {
-            width: 80000,
-            height: 200000,
-          },
-        } as any,
-        (success, failureReason) => {
-          if (!success) {
-            reject(new Error(failureReason || 'No se pudo imprimir la factura.'));
-            return;
-          }
-          resolve();
-        },
-      );
-    });
-
-    return { ok: true };
-  } finally {
-    if (!win.isDestroyed()) {
-      win.close();
-    }
-  }
-});
 
   ipcMain.handle('sales:suspend', async (_e, payload) => {
     requirePermissionFromPayload(payload, 'pos:sell');
-
-    const sale = (payload as any)?.sale ?? payload;
-    const mode = await getDbMode();
-
-    console.log('[sales:suspend] mode =', mode);
-
-    if (mode === 'mysql') {
-      const id = await suspendSaleMySql(sale);
-      return { ok: true, id };
-    }
-
-    const id = suspendSale(sale);
-    return { ok: true, id };
+    return await suspendSaleByMode(payload);
   });
 
   ipcMain.handle('sales:suspended-list', async (_e, payload) => {
     requirePermissionFromPayload(payload, 'pos:sell');
-
-    const mode = await getDbMode();
-    console.log('[sales:suspended-list] mode =', mode);
-
-    if (mode === 'mysql') {
-      return await listSuspendedSalesMySql();
-    }
-
-    return listSuspendedSales();
+    return await listSuspendedSalesByMode();
   });
 
   ipcMain.handle('sales:suspended-get', async (_e, payload) => {
     requirePermissionFromPayload(payload, 'pos:sell');
-
-    const id = String((payload as any)?.id ?? '');
-    const mode = await getDbMode();
-
-    console.log('[sales:suspended-get] mode =', mode);
-
-    if (mode === 'mysql') {
-      return await getSuspendedSaleMySql(id);
-    }
-
-    return getSuspendedSale(id);
+    return await getSuspendedSaleByMode(payload);
   });
 
   ipcMain.handle('sales:suspended-delete', async (_e, payload) => {
     requirePermissionFromPayload(payload, 'pos:sell');
-
-    const id = String((payload as any)?.id ?? '');
-    const mode = await getDbMode();
-
-    console.log('[sales:suspended-delete] mode =', mode);
-
-    if (mode === 'mysql') {
-      await deleteSuspendedSaleMySql(id);
-      return { ok: true };
-    }
-
-    deleteSuspendedSale(id);
-    return { ok: true };
+    return await deleteSuspendedSaleByMode(payload);
   });
 
   ipcMain.handle('sales:recent', async (_e, payload) => {
     requirePermissionFromPayload(payload, 'pos:sell');
-
-    const limit = Number((payload as any)?.limit ?? 30);
-    const mode = await getDbMode();
-
-    console.log('[sales:recent] mode =', mode);
-
-    if (mode === 'mysql') {
-      return await listRecentSalesMySql(limit);
-    }
-
-    return listRecentSales(limit);
+    return await listRecentSalesByMode(payload);
   });
 
   ipcMain.handle('sales:detail', async (_e, payload) => {
     requirePermissionFromPayload(payload, 'pos:sell');
-
-    const id = String((payload as any)?.id ?? '');
-    const mode = await getDbMode();
-
-    console.log('[sales:detail] mode =', mode);
-
-    if (mode === 'mysql') {
-      return await getSaleDetailMySql(id);
-    }
-
-    return getSaleDetail(id);
+    return await getSaleDetailByMode(payload);
   });
 
   ipcMain.handle('sales:return', async (_e, payload) => {
-
-  requirePermissionFromPayload(payload, 'pos:sell');
-
-  const mode = await getDbMode();
-
-  if (mode === 'mysql') {
-
-    return await returnSaleMySql(payload);
-
-  }
-
-  throw new Error('Return sale only implemented for MySQL.');
-
-});
-
-
+    requirePermissionFromPayload(payload, 'pos:sell');
+    return await returnSaleByMode(payload);
+  });
 };
