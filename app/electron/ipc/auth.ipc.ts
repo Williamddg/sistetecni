@@ -5,7 +5,7 @@ import { authUser } from '../db/queries'; // tu SQLite
 
 export const registerAuthIpc = (): void => {
   ipcMain.handle('auth:login', async (_e, email: string, password: string) => {
-    const user = isMySqlEnabled()
+    const user = (await isMySqlEnabled())
       ? await authUserMySql(email, password)
       : authUser(email, password);
 
