@@ -83,7 +83,8 @@ export const registerBackupsIpc = (): void => {
       }
       markFallbackOperation(plan, { backupPath: out, reason: 'manual' });
       return out;
-    } catch {
+    } catch (error) {
+      console.error('[backup:create-manual] failed', error);
       return null;
     }
   });
