@@ -22,7 +22,8 @@
     "package:mac": "npm run package:prepare && electron-builder --mac dmg --x64",
     "package:linux": "npm run package:prepare && electron-builder --linux AppImage deb --x64",
     "package:linux:dir": "npm run package:prepare && electron-builder --linux AppImage deb --x64 --dir",
-    "packaging:check": "node scripts/packaging/check-packaging-config.cjs"
+    "packaging:check": "node scripts/packaging/check-packaging-config.cjs",
+    "packaging:validate:dir": "node scripts/packaging/validate-targets.cjs"
   },
   "build": {
     "appId": "com.sistetecni.pos",

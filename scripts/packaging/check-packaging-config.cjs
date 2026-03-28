@@ -34,6 +34,12 @@ if (!Array.isArray(build.extraResources) || build.extraResources.length === 0) {
   console.error('[packaging:check] extraResources is empty');
 }
 
+try {
+  require.resolve('dmg-license');
+} catch {
+  console.warn('[packaging:check] warning: optional dependency "dmg-license" is missing (required for macOS DMG builds).');
+}
+
 if (failed) {
   process.exit(1);
 }
