@@ -86,6 +86,39 @@ describe('installer IPC setup robustness', () => {
     expect(runInstallerMock).toHaveBeenCalledWith(expect.objectContaining(payload));
   });
 
+  test('config_invalid -> testConnection OK -> installer run OK recovery path', async () => {
+    // Paso 1: sin config guardada
+    const checkNoConfig = await (ipcMain as any).__invokeAs(704, 'installer:check');
+    expect(checkNoConfig).toEqual({
+      installed: false,
+      state: 'config_invalid',
+      reason: 'Sin configuración MySQL',
+    });
+
+    // Paso 2: usuario corrige datos y prueba conexión
+    testMySqlConnectionMock.mockResolvedValue({ ok: true });
+    const testResult = await (ipcMain as any).__invokeAs(704, 'installer:test-connection', {
+      host: '127.0.0.1',
+      user: 'root',
+      database: 'pos',
+      port: 3306,
+      password: '',
+    });
+    expect(testResult).toEqual({ ok: true });
+
+    // Paso 3: run permitido (no instalado) y finaliza ok
+    checkDbInstalledMock.mockResolvedValue({ installed: false, state: 'not_installed' });
+    runInstallerMock.mockResolvedValue({ ok: true });
+    const runResult = await (ipcMain as any).__invokeAs(704, 'installer:run', {
+      mysql: { host: '127.0.0.1', user: 'root', database: 'pos', port: 3306, password: '' },
+      adminName: 'Admin',
+      adminEmail: 'admin@test.com',
+      adminPassword: '123456',
+      isCashier: false,
+    });
+    expect(runResult).toEqual({ ok: true });
+  });
+
   test('installer:run restores previous config when install fails', async () => {
     Object.assign(mysqlConfigState, {
       host: 'server-a',

@@ -12,6 +12,11 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
+import {
+  mapConnectionFailureToGuidance,
+  mapInstallerStatusToGuidance,
+  type InstallerStatusLike,
+} from '../services/setupRecovery';
 
 // ─────────────────────────────────────────────
 // Tipos
@@ -46,11 +51,7 @@ interface PrefillData {
   database?: string;
 }
 
-type InstallerStatus = {
-  state?: 'config_invalid' | 'not_installed' | 'partial' | 'complete';
-  reason?: string;
-  missingTables?: string[];
-} | null;
+type InstallerStatus = InstallerStatusLike;
 
 // ─────────────────────────────────────────────
 // Componente principal
@@ -83,24 +84,25 @@ export default function SetupWizard({
   const [currentProgress, setCurrentProgress] = useState<InstallProgress | null>(null);
   const [errorMsg, setErrorMsg]     = useState('');
   const [showPass, setShowPass]     = useState(false);
+  const [recoveryStatus, setRecoveryStatus] = useState<InstallerStatus>(initialStatus ?? null);
+  const [recoveryHint, setRecoveryHint] = useState<string>('');
   const logRef = useRef<HTMLDivElement>(null);
 
-  const setupStateMessage = (() => {
-    if (!initialStatus?.state) return null;
-    if (initialStatus.state === 'partial') {
-      const missing = initialStatus.missingTables?.length
-        ? `Tablas faltantes: ${initialStatus.missingTables.join(', ')}.`
-        : '';
-      return `⚠️ Instalación parcial detectada. ${initialStatus.reason ?? ''} ${missing}`.trim();
+  const setupGuidance = mapInstallerStatusToGuidance(recoveryStatus);
+  const setupStateMessage = setupGuidance
+    ? `⚠️ ${setupGuidance.title} ${setupGuidance.action}`
+    : '';
+
+  const refreshInstallerStatus = async () => {
+    const api = (window as any).api;
+    try {
+      const status = await api?.installer?.check?.();
+      if (status?.state) setRecoveryStatus(status);
+      return status ?? null;
+    } catch {
+      return null;
     }
-    if (initialStatus.state === 'config_invalid') {
-      return `⚠️ Configuración MySQL inválida o incompleta. ${initialStatus.reason ?? ''}`.trim();
-    }
-    if (initialStatus.state === 'not_installed') {
-      return `ℹ️ No se detectó instalación MySQL completa. ${initialStatus.reason ?? ''}`.trim();
-    }
-    return null;
-  })();
+  };
 
   // Escuchar progreso en tiempo real
   useEffect(() => {
@@ -131,6 +133,7 @@ export default function SetupWizard({
     const api = (window as any).api;
     setTesting(true);
     setTestResult(null);
+    setRecoveryHint('');
     const result = await api.installer.testConnection({
       host: form.host.trim(),
       port: Number(form.port) || 3306,
@@ -139,6 +142,13 @@ export default function SetupWizard({
       database: form.database.trim(),
     });
     setTestResult(result);
+    if (!result?.ok) {
+      const guidance = mapConnectionFailureToGuidance(result?.message);
+      setRecoveryHint(`${guidance.title} ${guidance.action}`);
+      await refreshInstallerStatus();
+    } else if (recoveryStatus?.state === 'config_invalid') {
+      setRecoveryHint('Conexión validada. Continúa con la instalación para guardar la configuración.');
+    }
     setTesting(false);
   };
 
@@ -192,6 +202,9 @@ export default function SetupWizard({
       setStep('done');
     } else {
       setErrorMsg(result.error ?? 'Error desconocido');
+      const guidance = mapConnectionFailureToGuidance(result.error);
+      setRecoveryHint(`${guidance.title} ${guidance.action}`);
+      await refreshInstallerStatus();
       setStep('error');
     }
   };
@@ -260,6 +273,11 @@ export default function SetupWizard({
             {setupStateMessage && (
               <div style={{ ...styles.alert, background: '#FFFBEB', borderColor: '#FCD34D' }}>
                 <span style={{ color: '#92400E', fontSize: 13 }}>{setupStateMessage}</span>
+              </div>
+            )}
+            {recoveryHint && (
+              <div style={{ ...styles.alert, background: '#EFF6FF', borderColor: '#93C5FD' }}>
+                <span style={{ color: '#1D4ED8', fontSize: 13 }}>{recoveryHint}</span>
               </div>
             )}
 
@@ -522,6 +540,9 @@ export default function SetupWizard({
       setStep('done');
     } else {
       setErrorMsg(result.error ?? 'Error desconocido');
+      const guidance = mapConnectionFailureToGuidance(result.error);
+      setRecoveryHint(`${guidance.title} ${guidance.action}`);
+      await refreshInstallerStatus();
       setStep('error');
     }
   }

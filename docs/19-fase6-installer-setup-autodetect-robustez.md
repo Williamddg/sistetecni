@@ -99,3 +99,23 @@ Se reduce de forma material la ambigüedad de estados de instalación y se forta
 - No se reescribe la UX del wizard.
 - No se introduce un asistente nuevo de migración entre SQLite↔MySQL.
 - No se cambia packaging ni fases externas.
+
+## Ronda incremental: reintento guiado (errores comunes)
+
+Errores comunes cubiertos en mapeo de guía:
+
+1. Timeout / host inaccesible (`ETIMEDOUT`, `ECONNREFUSED`, `ENOTFOUND`, `EHOSTUNREACH`).
+2. Credenciales inválidas (`ER_ACCESS_DENIED_ERROR`, `Access denied`).
+3. Base inexistente (`ER_BAD_DB_ERROR`, `Unknown database`).
+4. Estado `partial` (con tablas faltantes cuando existen en `installer:check`).
+5. Estado `config_invalid`.
+
+Mensajes/acciones:
+
+- Se muestran recomendaciones accionables para red/host, credenciales y creación de DB.
+- Tras fallo de test de conexión o instalación, el setup refresca `installer:check` para conservar el último contexto de recuperación y no dejar al usuario “a ciegas”.
+
+Límites:
+
+- Si el error no coincide con patrón confiable, se usa fallback genérico controlado.
+- No hay rediseño visual mayor del wizard; sólo avisos contextuales adicionales.
