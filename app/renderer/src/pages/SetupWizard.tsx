@@ -46,15 +46,23 @@ interface PrefillData {
   database?: string;
 }
 
+type InstallerStatus = {
+  state?: 'config_invalid' | 'not_installed' | 'partial' | 'complete';
+  reason?: string;
+  missingTables?: string[];
+} | null;
+
 // ─────────────────────────────────────────────
 // Componente principal
 // ─────────────────────────────────────────────
 export default function SetupWizard({
   onComplete,
   prefill,
+  initialStatus,
 }: {
   onComplete: () => void;
   prefill?: PrefillData | null;
+  initialStatus?: InstallerStatus;
 }) {
   const isCashier = prefill?.mode === 'cashier';
 
@@ -76,6 +84,23 @@ export default function SetupWizard({
   const [errorMsg, setErrorMsg]     = useState('');
   const [showPass, setShowPass]     = useState(false);
   const logRef = useRef<HTMLDivElement>(null);
+
+  const setupStateMessage = (() => {
+    if (!initialStatus?.state) return null;
+    if (initialStatus.state === 'partial') {
+      const missing = initialStatus.missingTables?.length
+        ? `Tablas faltantes: ${initialStatus.missingTables.join(', ')}.`
+        : '';
+      return `⚠️ Instalación parcial detectada. ${initialStatus.reason ?? ''} ${missing}`.trim();
+    }
+    if (initialStatus.state === 'config_invalid') {
+      return `⚠️ Configuración MySQL inválida o incompleta. ${initialStatus.reason ?? ''}`.trim();
+    }
+    if (initialStatus.state === 'not_installed') {
+      return `ℹ️ No se detectó instalación MySQL completa. ${initialStatus.reason ?? ''}`.trim();
+    }
+    return null;
+  })();
 
   // Escuchar progreso en tiempo real
   useEffect(() => {
@@ -231,6 +256,12 @@ export default function SetupWizard({
                 : <>Ingresa los datos de tu servidor MySQL. Si es local, usa <code style={styles.code}>localhost</code>.</>
               }
             </p>
+
+            {setupStateMessage && (
+              <div style={{ ...styles.alert, background: '#FFFBEB', borderColor: '#FCD34D' }}>
+                <span style={{ color: '#92400E', fontSize: 13 }}>{setupStateMessage}</span>
+              </div>
+            )}
 
             <div style={styles.row2}>
               <Field label={isCashier ? 'IP del PC Servidor' : 'Host / IP'} error={errors.host}>

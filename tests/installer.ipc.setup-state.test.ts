@@ -54,6 +54,38 @@ describe('installer IPC setup robustness', () => {
     });
   });
 
+  test('installer:check reports config_invalid when there is no persisted mysql config', async () => {
+    const result = await (ipcMain as any).__invokeAs(702, 'installer:check');
+    expect(result).toEqual({
+      installed: false,
+      state: 'config_invalid',
+      reason: 'Sin configuración MySQL',
+    });
+  });
+
+  test('installer:run allows unauthenticated recovery when schema is partial', async () => {
+    checkDbInstalledMock.mockResolvedValue({
+      installed: false,
+      state: 'partial',
+      reason: 'Esquema MySQL parcial',
+      missingTables: ['sale_items'],
+    });
+    runInstallerMock.mockResolvedValue({ ok: true });
+
+    const payload = {
+      mysql: { host: 'server-a', user: 'root', database: 'pos_a', port: 3306, password: 'x' },
+      adminName: 'Admin',
+      adminEmail: 'admin@test.com',
+      adminPassword: '123456',
+      isCashier: false,
+    };
+
+    const result = await (ipcMain as any).__invokeAs(703, 'installer:run', payload);
+
+    expect(result).toEqual({ ok: true });
+    expect(runInstallerMock).toHaveBeenCalledWith(expect.objectContaining(payload));
+  });
+
   test('installer:run restores previous config when install fails', async () => {
     Object.assign(mysqlConfigState, {
       host: 'server-a',

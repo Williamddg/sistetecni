@@ -76,3 +76,26 @@ Si conecta pero está parcial, devuelve `server_auto` con `dbInstalled: false` p
 ## Resultado de esta subtarea
 
 Se reduce de forma material la ambigüedad de estados de instalación y se fortalece el primer arranque con cambios compatibles y de bajo riesgo.
+
+---
+
+## Ronda incremental: recuperación de estados parciales (sin rediseño UX)
+
+### Estados soportados en setup (primer arranque)
+
+- `config_invalid`: se muestra aviso para corregir host/usuario/DB antes de reintentar.
+- `not_installed`: se informa que no hay instalación completa y se continúa wizard normal.
+- `partial`: se muestra aviso explícito de recuperación (incluyendo tablas faltantes cuando están disponibles).
+- `complete`: se evita entrar en setup y se continúa a flujo normal.
+
+### Cambios de flujo aplicados
+
+1. `App.tsx` consulta `installer:check` como apoyo al autodetect cuando corresponde y evita estado ambiguo si el check ya reporta `complete`.
+2. `SetupWizard` recibe `initialStatus` y muestra un mensaje contextual no invasivo (sin rediseño visual mayor).
+3. Se mantiene compatibilidad SQLite/MySQL: la ronda sólo reduce ambigüedad de arranque y recuperación, sin abrir una reimplementación amplia de coexistencia.
+
+### Límites de esta ronda
+
+- No se reescribe la UX del wizard.
+- No se introduce un asistente nuevo de migración entre SQLite↔MySQL.
+- No se cambia packaging ni fases externas.
