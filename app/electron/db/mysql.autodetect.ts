@@ -14,6 +14,7 @@ import { app } from "electron";
 import { writeMySqlConfig, readMySqlConfig } from "./mysqlConfig";
 import { checkDbInstalled } from "./dbInstaller";
 import type { MySqlConfig } from "./mysqlConfig";
+import { testMySqlConnection } from "./mysql";
 
 interface AutoInstallInfo {
   autoInstalled: boolean;
@@ -80,8 +81,25 @@ export const autoDetectAndConfigureMySQL = async (): Promise<AutoDetectResult> =
   // ¿Ya hay config MySQL guardada y funcional?
   const existing = readMySqlConfig();
   if (existing?.host) {
-    console.log("[autodetect] Config MySQL ya existe");
-    return { status: "ready" };
+    const tested = await testMySqlConnection(existing).catch(() => ({ ok: false }));
+    if (!tested.ok) {
+      console.warn("[autodetect] Config existente inválida/no conectable, modo manual");
+      return { status: "manual" };
+    }
+
+    const checked = await checkDbInstalled(existing);
+    if (checked.installed) {
+      console.log("[autodetect] Config MySQL existente y esquema completo");
+      return { status: "ready" };
+    }
+
+    console.warn("[autodetect] Config MySQL existente pero esquema incompleto:", checked.state);
+    return { status: "server_auto", config: existing, dbInstalled: false };
+  }
+
+  if (process.platform !== 'win32') {
+    console.log('[autodetect] Plataforma no-Windows: omitiendo señales NSIS y usando modo manual');
+    return { status: 'manual' };
   }
 
   if (process.platform !== 'win32') {

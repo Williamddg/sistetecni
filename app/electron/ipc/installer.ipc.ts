@@ -37,7 +37,7 @@ export const registerInstallerIpc = (): void => {
 
   ipcMain.handle('installer:check', async () => {
     const cfg = readMySqlConfig();
-    if (!cfg) return { installed: false, reason: 'Sin configuración MySQL' };
+    if (!cfg) return { installed: false, state: 'config_invalid', reason: 'Sin configuración MySQL' };
     return await checkDbInstalled(cfg);
   });
 
@@ -51,9 +51,11 @@ export const registerInstallerIpc = (): void => {
         adminEmail: string;
         adminPassword: string;
         companyName?: string;
+        isCashier?: boolean;
       },
     ) => {
       await assertInstallerRunAllowed(event, payload.mysql);
+      const previousConfig = readMySqlConfig();
       writeMySqlConfig(payload.mysql);
 
       const win = BrowserWindow.fromWebContents(event.sender);
@@ -64,6 +66,10 @@ export const registerInstallerIpc = (): void => {
           win?.webContents.send('installer:progress', p);
         },
       });
+
+      if (!result.ok && previousConfig) {
+        writeMySqlConfig(previousConfig);
+      }
 
       return result;
     },
