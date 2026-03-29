@@ -1,17 +1,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { app, dialog, ipcMain } from 'electron';
+import { dialog, ipcMain } from 'electron';
 import { getDb, getDbPath } from '../db/db';
 import { logAuditRepo } from '../db/audit.repo';
 import { markFallbackOperation, resolveSensitiveOperationPlan } from '../db/fallbackControl';
-import { requirePermissionFromPayload } from './rbac';
+import { getTrustedAuthContext, requirePermissionFromPayload } from './rbac';
+import { ensureUserDataSubdir } from '../services/storagePaths.service';
 
 type BackupReason = 'manual' | 'daily' | 'cash_close';
 
 const getBackupsDir = (): string => {
-  const dir = path.join(app.getPath('userData'), 'backups');
-  fs.mkdirSync(dir, { recursive: true });
-  return dir;
+  return ensureUserDataSubdir('backups');
 };
 
 const backupName = (): string => {
@@ -65,12 +64,13 @@ export const ensureDailyBackup = async (): Promise<string | null> => {
 };
 
 export const registerBackupsIpc = (): void => {
-  ipcMain.handle('backup:create-manual', async (_e, payload) => {
+  ipcMain.handle('backup:create-manual', async (event, payload) => {
     try {
-      requirePermissionFromPayload(payload, 'backup:write');
+      requirePermissionFromPayload(event, payload, 'backup:write');
+      const trusted = getTrustedAuthContext(event);
       const plan = await resolveSensitiveOperationPlan('backup:create');
       const out = await createBackup('manual');
-      const actorId = String((payload as any)?.userId ?? '');
+      const actorId = String(trusted.userId ?? '');
       if (actorId) {
         await logAuditRepo({
           actorId,
@@ -82,14 +82,15 @@ export const registerBackupsIpc = (): void => {
       }
       markFallbackOperation(plan, { backupPath: out, reason: 'manual' });
       return out;
-    } catch {
+    } catch (error) {
+      console.error('[backup:create-manual] failed', error);
       return null;
     }
   });
 
-  ipcMain.handle('backups:export', async (_e, payload) => {
+  ipcMain.handle('backups:export', async (event, payload) => {
     try {
-      requirePermissionFromPayload(payload, 'backup:write');
+      requirePermissionFromPayload(event, payload, 'backup:write');
       const target = await dialog.showOpenDialog({ properties: ['openDirectory', 'createDirectory'] });
       if (target.canceled || !target.filePaths[0]) return null;
       const out = path.join(target.filePaths[0], backupName());
@@ -101,9 +102,9 @@ export const registerBackupsIpc = (): void => {
     }
   });
 
-  ipcMain.handle('backups:restore', async (_e, payload) => {
+  ipcMain.handle('backups:restore', async (event, payload) => {
     try {
-      requirePermissionFromPayload(payload, 'backup:write');
+      requirePermissionFromPayload(event, payload, 'backup:write');
       const file = await dialog.showOpenDialog({ properties: ['openFile'], filters: [{ name: 'SQLite DB', extensions: ['db'] }] });
       if (file.canceled || !file.filePaths[0]) return false;
       fs.copyFileSync(file.filePaths[0], getDbPath());
