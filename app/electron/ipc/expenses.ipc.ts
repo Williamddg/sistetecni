@@ -9,8 +9,8 @@ export const registerExpensesIpc = (): void => {
   ipcMain.removeHandler('expenses:add');
   ipcMain.removeHandler('expenses:list');
 
-  ipcMain.handle('expenses:add', async (_e, payload) => {
-    requirePermissionFromPayload(payload, 'expenses:write');
+  ipcMain.handle('expenses:add', async (event, payload) => {
+    requirePermissionFromPayload(event, payload, 'expenses:write');
 
     const expense = (payload as any)?.expense ?? payload;
 
@@ -35,8 +35,8 @@ export const registerExpensesIpc = (): void => {
     return id;
   });
 
-  ipcMain.handle('expenses:list', async (_e, payload) => {
-    requirePermissionFromPayload(payload, 'expenses:read');
+  ipcMain.handle('expenses:list', async (event, payload) => {
+    requirePermissionFromPayload(event, payload, 'expenses:read');
 
     const from = String((payload as any)?.from ?? '');
     const to = String((payload as any)?.to ?? '');
