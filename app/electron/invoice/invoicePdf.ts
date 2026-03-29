@@ -13,6 +13,16 @@ export const toSafeInvoiceFileName = (invoiceNumber: unknown): string => {
   return cleaned || 'invoice';
 };
 
+export const toSafeInvoiceFileName = (invoiceNumber: unknown): string => {
+  const raw = String(invoiceNumber ?? '').trim() || 'invoice';
+  const cleaned = raw
+    .replace(/[<>:"/\\|?*\x00-\x1F]/g, '-')
+    .replace(/\s+/g, '_')
+    .replace(/-+/g, '-')
+    .replace(/^[-_.]+|[-_.]+$/g, '');
+  return cleaned || 'invoice';
+};
+
 export const generateInvoicePdf = async (invoice: any): Promise<string> => {
   const dir = ensureUserDataSubdir('invoices');
   const filePath = path.join(dir, `${toSafeInvoiceFileName(invoice.invoiceNumber)}.pdf`);
