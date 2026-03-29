@@ -1,6 +1,7 @@
 import { ipcMain, app, BrowserWindow } from 'electron';
 import fs from 'fs';
-import path from 'path';
+import { requirePermissionFromPayload } from './rbac';
+import { getUserDataFilePath } from '../services/storagePaths.service';
 
 type AppConfig = {
   dbMode?: 'sqlite' | 'mysql';
@@ -17,7 +18,7 @@ type AppConfig = {
   };
 };
 
-const getConfigPath = () => path.join(app.getPath('userData'), 'config.json');
+const getConfigPath = () => getUserDataFilePath('config.json');
 
 const readConfig = (): AppConfig => {
   const file = getConfigPath();
@@ -51,7 +52,9 @@ export const registerConfigIpc = (): void => {
     return cfg;
   });
 
-  ipcMain.handle('config:set', async (_event, patch: Partial<AppConfig>) => {
+  ipcMain.handle('config:set', async (event, patch: Partial<AppConfig>) => {
+    requirePermissionFromPayload(event, patch, 'config:write');
+
     const current = readConfig();
     const next = mergeConfig(current, patch);
     fs.writeFileSync(getConfigPath(), JSON.stringify(next, null, 2), 'utf-8');
