@@ -10,28 +10,28 @@ import {
 } from '../modules/cash/cash.service';
 
 export const registerCashIpc = (): void => {
-  ipcMain.handle('cash:open', async (_e, payload) => {
-    requirePermissionFromPayload(payload, 'cash:openclose');
+  ipcMain.handle('cash:open', async (event, payload) => {
+    requirePermissionFromPayload(event, payload, 'cash:openclose');
     return await openCashService(payload);
   });
 
-  ipcMain.handle('cash:get-open', async (_e, payload) => {
-    requirePermissionFromPayload(payload, 'cash:read');
+  ipcMain.handle('cash:get-open', async (event, payload) => {
+    requirePermissionFromPayload(event, payload, 'cash:read');
     return await getOpenCashService();
   });
 
-  ipcMain.handle('cash:get-status', async (_e, payload) => {
-    requirePermissionFromPayload(payload, 'cash:read');
+  ipcMain.handle('cash:get-status', async (event, payload) => {
+    requirePermissionFromPayload(event, payload, 'cash:read');
     return await getCashStatusService();
   });
 
-  ipcMain.handle('cash:get-open-suggestion', async (_e, payload) => {
-    requirePermissionFromPayload(payload, 'cash:read');
+  ipcMain.handle('cash:get-open-suggestion', async (event, payload) => {
+    requirePermissionFromPayload(event, payload, 'cash:read');
     return await getOpenSuggestionService();
   });
 
-  ipcMain.handle('cash:close', async (_e, payload) => {
-    requirePermissionFromPayload(payload, 'cash:openclose');
+  ipcMain.handle('cash:close', async (event, payload) => {
+    requirePermissionFromPayload(event, payload, 'cash:openclose');
 
     const { base } = await closeCashService(payload);
 
