@@ -13,30 +13,44 @@ export type SetupGuidance = {
 
 const normalize = (v: unknown): string => String(v ?? '').toLowerCase();
 
-export const mapConnectionFailureToGuidance = (input: unknown): SetupGuidance => {
+export const classifyConnectionFailure = (input: unknown): 'network_unreachable' | 'invalid_credentials' | 'unknown_database' | 'generic_unknown' => {
   const msg = normalize(input);
 
   if (/(etimedout|timeout|ehostunreach|enotfound|econnrefused|can't connect|cannot connect)/.test(msg)) {
+    return 'network_unreachable';
+  }
+
+  if (/(access denied|er_access_denied_error|authentication|auth failed)/.test(msg)) {
+    return 'invalid_credentials';
+  }
+
+  if (/(unknown database|er_bad_db_error)/.test(msg)) {
+    return 'unknown_database';
+  }
+
+  return 'generic_unknown';
+};
+
+export const mapConnectionFailureToGuidance = (input: unknown): SetupGuidance => {
+  const code = classifyConnectionFailure(input);
+  if (code === 'network_unreachable') {
     return {
       title: 'No se pudo alcanzar el servidor MySQL.',
       action: 'Verifica host/IP, puerto, red y firewall; luego reintenta la conexión.',
     };
   }
-
-  if (/(access denied|er_access_denied_error|authentication|auth failed)/.test(msg)) {
+  if (code === 'invalid_credentials') {
     return {
       title: 'Credenciales MySQL inválidas.',
       action: 'Corrige usuario/contraseña y vuelve a probar conexión.',
     };
   }
-
-  if (/(unknown database|er_bad_db_error)/.test(msg)) {
+  if (code === 'unknown_database') {
     return {
       title: 'La base de datos no existe todavía.',
       action: 'Puedes continuar: el instalador intentará crearla automáticamente.',
     };
   }
-
   return {
     title: 'No se pudo validar la conexión MySQL.',
     action: 'Revisa los datos ingresados y vuelve a intentarlo.',

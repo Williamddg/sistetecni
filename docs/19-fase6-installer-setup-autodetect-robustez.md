@@ -119,3 +119,29 @@ Límites:
 
 - Si el error no coincide con patrón confiable, se usa fallback genérico controlado.
 - No hay rediseño visual mayor del wizard; sólo avisos contextuales adicionales.
+
+## Ronda incremental final: telemetría local mínima + copy contextual
+
+Telemetría mínima guardada localmente (`localStorage`, clave `setup.telemetry.v1`):
+
+- `failureCount`
+- `lastFailureAt`
+- `lastFailureClass`
+- `lastFailureSource`
+- `lastMode` (`cashier`/`server`)
+- `lastMessage` (truncado)
+
+Uso en soporte local:
+
+- Permite saber cuántos intentos fallidos recientes tuvo el equipo y cuál fue el último error clasificado.
+- Se muestra en el setup como pista breve para soporte (“Intentos fallidos recientes…”), sin analytics remotos.
+
+Copy/contexto adicional:
+
+- En modo `cashier`, la guía enfatiza validar conectividad con servidor e intervención de administrador.
+- En modo `server`, la guía enfatiza credenciales/permisos MySQL y creación de esquema.
+
+Límite explícito:
+
+- No se envía telemetría fuera del equipo.
+- No se implementa observabilidad pesada; sólo ayuda operativa local para primer arranque/setup.

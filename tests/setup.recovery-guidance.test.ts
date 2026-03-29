@@ -1,4 +1,5 @@
 import {
+  classifyConnectionFailure,
   mapConnectionFailureToGuidance,
   mapInstallerStatusToGuidance,
 } from '../app/renderer/src/services/setupRecovery';
@@ -32,5 +33,14 @@ describe('setup recovery guidance mapping', () => {
       reason: 'Sin configuración MySQL',
     });
     expect(invalid?.title).toContain('incompleta');
+  });
+
+  test('falls back to controlled generic message when error cannot be classified', () => {
+    const code = classifyConnectionFailure('socket exploded with unknown code XYZ');
+    expect(code).toBe('generic_unknown');
+
+    const out = mapConnectionFailureToGuidance('socket exploded with unknown code XYZ');
+    expect(out.title).toContain('No se pudo validar');
+    expect(out.action).toContain('Revisa los datos');
   });
 });
