@@ -1,49 +1,19 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import { dialog, ipcMain } from 'electron';
-import { getDb, getDbPath } from '../db/db';
 import { logAuditRepo } from '../db/audit.repo';
 import { markFallbackOperation, resolveSensitiveOperationPlan } from '../db/fallbackControl';
+import {
+  createBackupSnapshot,
+  ensureDailyBackupSnapshot,
+  exportCurrentDatabaseTo,
+  restoreCurrentDatabaseFrom,
+} from '../services/backups.service';
 import { getTrustedAuthContext, requirePermissionFromPayload } from './rbac';
-import { ensureUserDataSubdir } from '../services/storagePaths.service';
 
 type BackupReason = 'manual' | 'daily' | 'cash_close';
 
-const getBackupsDir = (): string => {
-  return ensureUserDataSubdir('backups');
-};
-
-const backupName = (): string => {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `sistetecni-pos-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}-${pad(d.getHours())}-${pad(d.getMinutes())}.db`;
-};
-
-const pruneBackups = (dir: string): void => {
-  const backups = fs
-    .readdirSync(dir)
-    .filter((f) => f.endsWith('.db'))
-    .map((f) => ({ fullPath: path.join(dir, f), mtimeMs: fs.statSync(path.join(dir, f)).mtimeMs }))
-    .sort((a, b) => a.mtimeMs - b.mtimeMs);
-
-  const toDelete = backups.length - 30;
-  if (toDelete <= 0) return;
-  for (let i = 0; i < toDelete; i += 1) {
-    try {
-      fs.unlinkSync(backups[i].fullPath);
-    } catch {
-      // best effort prune, do not break app
-    }
-  }
-};
-
 export const createBackup = async (reason: BackupReason): Promise<string> => {
   try {
-    const dir = getBackupsDir();
-    const out = path.join(dir, backupName());
-    await getDb().backup(out);
-    pruneBackups(dir);
-    return out;
+    return await createBackupSnapshot(reason);
   } catch (error) {
     console.error(`[backup:${reason}] failed`, error);
     throw error;
@@ -52,11 +22,7 @@ export const createBackup = async (reason: BackupReason): Promise<string> => {
 
 export const ensureDailyBackup = async (): Promise<string | null> => {
   try {
-    const dir = getBackupsDir();
-    const today = new Date().toISOString().slice(0, 10);
-    const alreadyHasToday = fs.readdirSync(dir).some((f) => f.includes(today) && f.endsWith('.db'));
-    if (alreadyHasToday) return null;
-    return await createBackup('daily');
+    return await ensureDailyBackupSnapshot();
   } catch (error) {
     console.error('[backup:daily-check] failed', error);
     return null;
@@ -93,9 +59,7 @@ export const registerBackupsIpc = (): void => {
       requirePermissionFromPayload(event, payload, 'backup:write');
       const target = await dialog.showOpenDialog({ properties: ['openDirectory', 'createDirectory'] });
       if (target.canceled || !target.filePaths[0]) return null;
-      const out = path.join(target.filePaths[0], backupName());
-      fs.copyFileSync(getDbPath(), out);
-      return out;
+      return exportCurrentDatabaseTo(target.filePaths[0]);
     } catch (error) {
       console.error('[backup:export] failed', error);
       return null;
@@ -107,7 +71,7 @@ export const registerBackupsIpc = (): void => {
       requirePermissionFromPayload(event, payload, 'backup:write');
       const file = await dialog.showOpenDialog({ properties: ['openFile'], filters: [{ name: 'SQLite DB', extensions: ['db'] }] });
       if (file.canceled || !file.filePaths[0]) return false;
-      fs.copyFileSync(file.filePaths[0], getDbPath());
+      restoreCurrentDatabaseFrom(file.filePaths[0]);
       return true;
     } catch (error) {
       console.error('[backup:restore] failed', error);
