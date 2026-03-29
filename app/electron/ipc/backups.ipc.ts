@@ -1,17 +1,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { app, dialog, ipcMain } from 'electron';
+import { dialog, ipcMain } from 'electron';
 import { getDb, getDbPath } from '../db/db';
 import { logAuditRepo } from '../db/audit.repo';
 import { markFallbackOperation, resolveSensitiveOperationPlan } from '../db/fallbackControl';
 import { getTrustedAuthContext, requirePermissionFromPayload } from './rbac';
+import { ensureUserDataSubdir } from '../services/storagePaths.service';
 
 type BackupReason = 'manual' | 'daily' | 'cash_close';
 
 const getBackupsDir = (): string => {
-  const dir = path.join(app.getPath('userData'), 'backups');
-  fs.mkdirSync(dir, { recursive: true });
-  return dir;
+  return ensureUserDataSubdir('backups');
 };
 
 const backupName = (): string => {

@@ -115,22 +115,6 @@ export default function SetupWizard({
     }
   }, [modeLabel]);
 
-  const setupGuidance = mapInstallerStatusToGuidance(recoveryStatus);
-  const setupStateMessage = setupGuidance
-    ? `⚠️ ${setupGuidance.title} ${setupGuidance.action}`
-    : '';
-
-  const refreshInstallerStatus = async () => {
-    const api = (window as any).api;
-    try {
-      const status = await api?.installer?.check?.();
-      if (status?.state) setRecoveryStatus(status);
-      return status ?? null;
-    } catch {
-      return null;
-    }
-  };
-
   // Escuchar progreso en tiempo real
   useEffect(() => {
     const api = (window as any).api;

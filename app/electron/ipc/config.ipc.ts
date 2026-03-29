@@ -1,7 +1,7 @@
 import { ipcMain, app, BrowserWindow } from 'electron';
 import fs from 'fs';
-import path from 'path';
 import { requirePermissionFromPayload } from './rbac';
+import { getUserDataFilePath } from '../services/storagePaths.service';
 
 type AppConfig = {
   dbMode?: 'sqlite' | 'mysql';
@@ -18,7 +18,7 @@ type AppConfig = {
   };
 };
 
-const getConfigPath = () => path.join(app.getPath('userData'), 'config.json');
+const getConfigPath = () => getUserDataFilePath('config.json');
 
 const readConfig = (): AppConfig => {
   const file = getConfigPath();
