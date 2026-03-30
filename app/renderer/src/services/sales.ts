@@ -1,5 +1,6 @@
 import { ipc } from './ipcClient';
 import { getAuthContext } from './session';
+import type { ReturnSalePayload } from './posAdapters';
 
 export const createSale = (sale: unknown) =>
   ipc.sales.create({ ...getAuthContext(), sale });
@@ -27,5 +28,5 @@ export const getSaleDetail = (id: string) =>
 
 
 
-export const returnSale = (data: any) =>
+export const returnSale = (data: ReturnSalePayload) =>
   ipc.sales.return({ ...getAuthContext(), ...data });

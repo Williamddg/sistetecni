@@ -24,6 +24,7 @@ export const api = {
 
   auth: {
     login: (email: string, password: string) => ipcRenderer.invoke('auth:login', email, password),
+    logout: () => ipcRenderer.invoke('auth:logout'),
   },
 
   license: {
@@ -105,5 +106,10 @@ export const api = {
     listPorts: () => ipcRenderer.invoke('cashdrawer:list-ports'),
     listPrinters: () => ipcRenderer.invoke('cashdrawer:list-printers'),
     open: (payload: unknown) => ipcRenderer.invoke('cashdrawer:open', payload),
+  },
+
+  syncAdmin: {
+    status: () => ipcRenderer.invoke('sync:status:get'),
+    runManual: (payload: { limit?: number } = {}) => ipcRenderer.invoke('sync:run-manual', payload),
   },
 };
