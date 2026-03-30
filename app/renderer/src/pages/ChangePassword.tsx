@@ -1,10 +1,11 @@
 import { useState } from 'react';
+import type { SessionUser } from '../types';
 
 export const ChangePassword = ({
   user,
   onChanged,
 }: {
-  user: any;
+  user: SessionUser;
   onChanged: () => void;
 }) => {
   const [password, setPassword] = useState('');
