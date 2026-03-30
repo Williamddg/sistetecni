@@ -1,3 +1,10 @@
+import type {
+  DrawerOpenPayload,
+  DrawerOpenResult,
+  DrawerPort,
+  DrawerPrinter,
+} from './posAdapters';
+
 declare global {
   interface Window {
     api: any;
@@ -10,7 +17,7 @@ export const ipc = {
   ...api,
 
   cashdrawer: {
-    listPorts: async (): Promise<any[]> => {
+    listPorts: async (): Promise<DrawerPort[]> => {
       try {
         return (await api.cashdrawer?.listPorts?.()) ?? [];
       } catch {
@@ -18,7 +25,7 @@ export const ipc = {
       }
     },
 
-    listPrinters: async (): Promise<any[]> => {
+    listPrinters: async (): Promise<DrawerPrinter[]> => {
       try {
         return (await api.cashdrawer?.listPrinters?.()) ?? [];
       } catch {
@@ -26,19 +33,7 @@ export const ipc = {
       }
     },
 
-    open: async (payload: {
-      mode?: 'printer' | 'serial';
-      printerName?: string;
-      port?: string;
-      baudRate?: number;
-      dataBits?: 5 | 6 | 7 | 8;
-      stopBits?: 1 | 2;
-      parity?: 'none' | 'even' | 'odd' | 'mark' | 'space';
-      commandHex?: string;
-      appendCR?: boolean;
-      appendLF?: boolean;
-      timeoutMs?: number;
-    }): Promise<{ ok: boolean; message?: string; port?: string; printerName?: string; mode?: string }> => {
+    open: async (payload: DrawerOpenPayload): Promise<DrawerOpenResult> => {
       try {
         if (!api.cashdrawer?.open) return { ok: false, message: 'Cajón no configurado aún.' };
         return await api.cashdrawer.open(payload);

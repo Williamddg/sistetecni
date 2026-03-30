@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ipc } from '../services/ipcClient';
-import { getAuthContext } from '../services/session';
+import { closeCash, getCashStatus, getOpenCash, getOpenSuggestion, openCash } from '../services/cash';
 import { buildCashCloseHtml } from '../reports/cashCloseTemplate';
 import { getConfig } from '../services/config';
 
-function fmtDate(v: any): string {
+function fmtDate(v: unknown): string {
   if (!v) return '';
   if (v instanceof Date) return v.toLocaleString();
 
@@ -16,7 +15,7 @@ function fmtDate(v: any): string {
   return s;
 }
 
-function fmtMoney(v: any): string {
+function fmtMoney(v: unknown): string {
   const n = Number(v ?? 0);
   if (!isFinite(n)) return '0';
   return new Intl.NumberFormat('es-CO', {
@@ -104,10 +103,10 @@ function writeHtmlDocument(target: Window | null, title: string, html: string): 
   target.document.close();
 }
 
-export const Cash = ({ user }: { user: any }) => {
-  const [open, setOpen] = useState<any>(null);
-  const [status, setStatus] = useState<any>(null);
-  const [suggestion, setSuggestion] = useState<any>(null);
+export const Cash = ({ user }: { user: { id?: string; name?: string; email?: string } }) => {
+  const [open, setOpen] = useState<Awaited<ReturnType<typeof getOpenCash>>>(null);
+  const [status, setStatus] = useState<Awaited<ReturnType<typeof getCashStatus>>>(null);
+  const [suggestion, setSuggestion] = useState<Awaited<ReturnType<typeof getOpenSuggestion>>>(null);
 
   const [opening, setOpening] = useState(0);
   const [openingNotes, setOpeningNotes] = useState('');
@@ -120,9 +119,9 @@ export const Cash = ({ user }: { user: any }) => {
   const refresh = async (): Promise<void> => {
     try {
       const [openCash, cashStatus, openSuggestion] = await Promise.all([
-        ipc.cash.getOpen(getAuthContext()),
-        ipc.cash.getStatus(getAuthContext()),
-        ipc.cash.getOpenSuggestion(getAuthContext()),
+        getOpenCash(),
+        getCashStatus(),
+        getOpenSuggestion(),
       ]);
 
       setOpen(openCash);
@@ -135,9 +134,10 @@ export const Cash = ({ user }: { user: any }) => {
           setOpening(suggested);
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[cash.refresh] error:', err);
-      setMessage(err?.message || 'No se pudo refrescar el estado de caja.');
+      const message = err instanceof Error ? err.message : String(err ?? '');
+      setMessage(message || 'No se pudo refrescar el estado de caja.');
     }
   };
 
@@ -215,14 +215,11 @@ export const Cash = ({ user }: { user: any }) => {
     setMessage('');
 
     try {
-      const res = await ipc.cash.close({
-        ...getAuthContext(),
-        cash: {
-          id: sessionId,
-          countedCash: Number(counted || 0),
-          userId: user.id,
-          notes: '',
-        },
+      const res = await closeCash({
+        id: String(sessionId),
+        countedCash: Number(counted || 0),
+        userId: user.id,
+        notes: '',
       });
 
       let businessName = 'Sistetecni POS';
@@ -252,12 +249,13 @@ export const Cash = ({ user }: { user: any }) => {
 
       setCounted(0);
       await refresh();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[cash.close] error:', err);
       try {
         preview.close();
       } catch {}
-      setMessage(err?.message || 'No se pudo cerrar la caja.');
+      const message = err instanceof Error ? err.message : String(err ?? '');
+      setMessage(message || 'No se pudo cerrar la caja.');
     } finally {
       setLoading(false);
     }
@@ -273,22 +271,20 @@ export const Cash = ({ user }: { user: any }) => {
     setMessage('');
 
     try {
-      await ipc.cash.open({
-        ...getAuthContext(),
-        cash: {
-          userId: user.id,
-          openingCash: Number(opening || 0),
-          openingNotes: openingNotes.trim(),
-        },
+      await openCash({
+        userId: user.id,
+        openingCash: Number(opening || 0),
+        openingNotes: openingNotes.trim(),
       });
 
       setTouched(false);
       setOpeningNotes('');
       setMessage('Caja abierta correctamente.');
       await refresh();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[cash.open] error:', err);
-      setMessage(err?.message || 'No se pudo abrir la caja.');
+      const message = err instanceof Error ? err.message : String(err ?? '');
+      setMessage(message || 'No se pudo abrir la caja.');
     } finally {
       setLoading(false);
     }

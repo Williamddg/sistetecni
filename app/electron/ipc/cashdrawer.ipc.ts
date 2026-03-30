@@ -1,5 +1,4 @@
 import { ipcMain, BrowserWindow } from 'electron';
-import { SerialPort } from 'serialport';
 import { spawn } from 'node:child_process';
 
 type OpenPayload = {
@@ -23,6 +22,40 @@ type OpenPayload = {
 };
 
 const DEFAULT_COMMAND_HEX = '1B700019FA'; // ESC p 0 25 250
+
+type SerialPortCtor = new (opts: {
+  path: string;
+  baudRate: number;
+  dataBits: 5 | 6 | 7 | 8;
+  stopBits: 1 | 2;
+  parity: 'none' | 'even' | 'odd' | 'mark' | 'space';
+  autoOpen: boolean;
+}) => {
+  isOpen: boolean;
+  open: (cb: (err?: Error | null) => void) => void;
+  write: (data: Buffer, cb: (err?: Error | null) => void) => void;
+  drain: (cb: (err?: Error | null) => void) => void;
+  close: (cb: () => void) => void;
+  on: (event: 'error', cb: (error: Error) => void) => void;
+};
+
+let serialPortCtorCache: SerialPortCtor | null = null;
+let serialPortListCache: (() => Promise<Array<any>>) | null = null;
+
+const getSerialPortApi = async (): Promise<{ SerialPortCtor: SerialPortCtor; listPorts: () => Promise<Array<any>> }> => {
+  if (serialPortCtorCache && serialPortListCache) {
+    return { SerialPortCtor: serialPortCtorCache, listPorts: serialPortListCache };
+  }
+
+  try {
+    const mod = await import('serialport');
+    serialPortCtorCache = mod.SerialPort as unknown as SerialPortCtor;
+    serialPortListCache = () => mod.SerialPort.list();
+    return { SerialPortCtor: serialPortCtorCache, listPorts: serialPortListCache };
+  } catch (error: any) {
+    throw new Error(`SERIALPORT_UNAVAILABLE: ${error?.message ?? 'No se pudo cargar serialport'}`);
+  }
+};
 
 function hexToBuffer(hex: string): Buffer {
   const clean = String(hex ?? '').replace(/[^0-9a-fA-F]/g, '');
@@ -71,9 +104,10 @@ async function openDrawerSerial(payload: OpenPayload): Promise<{ ok: true; mode:
   const parity = (payload?.parity ?? 'none') as 'none' | 'even' | 'odd' | 'mark' | 'space';
   const timeoutMs = Math.max(1000, Number(payload?.timeoutMs ?? 5000));
   const data = buildCommand(payload);
+  const { SerialPortCtor } = await getSerialPortApi();
 
   const job = new Promise<{ ok: true; mode: 'serial'; port: string }>((resolve, reject) => {
-    const sp = new SerialPort({
+    const sp = new SerialPortCtor({
       path: portName,
       baudRate,
       dataBits,
@@ -122,6 +156,10 @@ async function openDrawerSerial(payload: OpenPayload): Promise<{ ok: true; mode:
 }
 
 async function openDrawerPrinter(payload: OpenPayload): Promise<{ ok: true; mode: 'printer'; printerName: string }> {
+  if (process.platform !== 'win32') {
+    throw new Error('UNSUPPORTED_PLATFORM: cashdrawer printer mode solo está soportado en Windows.');
+  }
+
   const printerName = String(payload?.printerName ?? '').trim();
   if (!printerName) {
     throw new Error('Debes enviar { printerName: "Nombre de la impresora" } para modo printer.');
@@ -282,7 +320,8 @@ export function registerCashDrawerIpc(): void {
   } catch {}
 
   ipcMain.handle('cashdrawer:list-ports', async () => {
-    const ports = await SerialPort.list();
+    const { listPorts } = await getSerialPortApi();
+    const ports = await listPorts();
 
     return ports.map((p) => ({
       path: p.path,

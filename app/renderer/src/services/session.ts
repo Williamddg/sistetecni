@@ -1,12 +1,12 @@
-import type { User } from '../types';
+import type { SessionUser } from '../types';
 
-let currentUser: User | null = null;
+let currentUser: SessionUser | null = null;
 
-export const setSessionUser = (user: User | null): void => {
+export const setSessionUser = (user: SessionUser | null): void => {
   currentUser = user;
 };
 
-export const getSessionUser = (): User | null => currentUser;
+export const getSessionUser = (): SessionUser | null => currentUser;
 
 export const getAuthContext = (): { userId: string; role: 'ADMIN' | 'SUPERVISOR' | 'SELLER' } => {
   if (!currentUser) throw new Error('No autorizado');
