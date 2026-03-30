@@ -3,8 +3,6 @@ import { login } from "../services/auth";
 import logo from "../assets/logo.png";
 import type { SessionUser } from "../types";
 
-type LoginUser = SessionUser;
-
 export const Login = ({ onLogin }: { onLogin: (u: SessionUser) => void }) => {
   const [email, setEmail] = useState("admin@sistetecni.com");
   const [password, setPassword] = useState("admin");
@@ -35,7 +33,7 @@ export const Login = ({ onLogin }: { onLogin: (u: SessionUser) => void }) => {
     setLoading(true);
 
     try {
-      const u = (await login(email.trim(), password)) as LoginUser;
+      const u = await login(email.trim(), password);
 
       if (u?.mustChangePassword) {
         onLogin({ ...u, _forceChangePassword: true });
@@ -43,8 +41,8 @@ export const Login = ({ onLogin }: { onLogin: (u: SessionUser) => void }) => {
       }
 
       onLogin(u);
-    } catch (e: any) {
-      const msg = String(e?.message ?? e ?? "Error");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e ?? "Error");
 
       if (msg.toLowerCase().includes("credenciales")) {
         setError("Credenciales inválidas.");

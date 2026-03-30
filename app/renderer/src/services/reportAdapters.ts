@@ -61,6 +61,16 @@ export type CashStatusSummary = {
   cashReturns: number;
 };
 
+export type DailyCloseSummary = {
+  totalSales: number;
+  totalReturns: number;
+  netSales: number;
+  profit: number;
+  totalExpenses: number;
+  net: number;
+  totalsByMethod: Record<string, number>;
+};
+
 export const toSalesByDayPoints = (value: unknown): SalesByDayPoint[] => {
   return unpackArrayPayload(value).map((row) => ({
     label: str(row.day ?? row.date ?? row.label).trim(),
@@ -115,5 +125,29 @@ export const toCashStatusSummary = (value: unknown): CashStatusSummary => {
     cashSales: num(row.cashSales),
     expenses: num(row.expenses),
     cashReturns: num(row.cashReturns),
+  };
+};
+
+export const toDailyCloseSummary = (value: unknown): DailyCloseSummary => {
+  const row = unpackObjectPayload(value);
+  const totalSales = num(row.totalSales ?? row.total_sales);
+  const totalReturns = num(row.totalReturns ?? row.total_returns);
+  const netSales = num(row.netSales ?? row.net_sales ?? (totalSales - totalReturns));
+  const totalExpenses = num(row.totalExpenses ?? row.total_expenses);
+  const profit = num(row.profit ?? row.utility);
+
+  const totalsByMethodRaw = asRecord(row.totalsByMethod ?? row.totals_by_method);
+  const totalsByMethod = Object.fromEntries(
+    Object.entries(totalsByMethodRaw).map(([k, v]) => [String(k), num(v)]),
+  );
+
+  return {
+    totalSales,
+    totalReturns,
+    netSales,
+    profit,
+    totalExpenses,
+    net: num(row.net ?? (netSales - totalExpenses)),
+    totalsByMethod,
   };
 };
