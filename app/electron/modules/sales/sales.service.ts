@@ -72,6 +72,11 @@ export const printInvoiceFromPayload = async (payload: any): Promise<{ ok: true 
 
     await new Promise((resolve) => setTimeout(resolve, 350));
 
+    const printers = await win.webContents.getPrintersAsync().catch(() => []);
+    if (!Array.isArray(printers) || printers.length === 0) {
+      throw new Error('NO_PRINTERS_AVAILABLE');
+    }
+
     await new Promise<void>((resolve, reject) => {
       win.webContents.print(
         {

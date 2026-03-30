@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ipc } from '../services/ipcClient';
-import { getAuthContext } from '../services/session';
+import { listAudit, type AuditRow } from '../services/audit';
 
-function fmtDate(v: any): string {
+function fmtDate(v: unknown): string {
   if (!v) return '';
   if (v instanceof Date) return v.toLocaleString('es-CO');
 
@@ -13,7 +12,7 @@ function fmtDate(v: any): string {
   return s;
 }
 
-function fmtText(v: any): string {
+function fmtText(v: unknown): string {
   if (v == null) return '';
   if (typeof v === 'string') return v;
   if (typeof v === 'number' || typeof v === 'boolean') return String(v);
@@ -27,7 +26,7 @@ function fmtText(v: any): string {
   }
 }
 
-function fmtMetadata(v: any): string {
+function fmtMetadata(v: unknown): string {
   if (!v) return '';
 
   if (typeof v === 'string') {
@@ -55,15 +54,14 @@ export const Audit = () => {
   const [to, setTo] = useState(today);
   const [actorId, setActorId] = useState<string>('');
   const [action, setAction] = useState<string>('');
-  const [rows, setRows] = useState<any[]>([]);
+  const [rows, setRows] = useState<AuditRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [expandedId, setExpandedId] = useState<string>('');
 
   const refresh = async (): Promise<void> => {
     setLoading(true);
     try {
-      const list = await ipc.audit.list({
-        ...getAuthContext(),
+      const list = await listAudit({
         from,
         to,
         actorId: actorId || undefined,
@@ -72,8 +70,8 @@ export const Audit = () => {
         offset: 0,
       });
 
-      setRows(Array.isArray(list) ? list : []);
-    } catch (e: any) {
+      setRows(list);
+    } catch (e: unknown) {
       console.error('[audit.refresh]', e);
       setRows([]);
     } finally {
