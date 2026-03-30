@@ -1,16 +1,11 @@
 import { useEffect, useState } from "react";
 import { login } from "../services/auth";
 import logo from "../assets/logo.png";
+import type { SessionUser } from "../types";
 
-type LoginUser = {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  mustChangePassword?: boolean;
-};
+type LoginUser = SessionUser;
 
-export const Login = ({ onLogin }: { onLogin: (u: any) => void }) => {
+export const Login = ({ onLogin }: { onLogin: (u: SessionUser) => void }) => {
   const [email, setEmail] = useState("admin@sistetecni.com");
   const [password, setPassword] = useState("admin");
   const [error, setError] = useState("");

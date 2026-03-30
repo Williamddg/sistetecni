@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { getConfig, setConfig } from '../services/config';
 
 type BusinessProfile = {
   businessName: string;
@@ -18,7 +19,7 @@ export const BusinessSettings = ({ onDone }: { onDone?: () => void }) => {
 
   useEffect(() => {
     (async () => { 
-      const cfg = await window.api.config.get();
+      const cfg = await getConfig();
       const p = (cfg?.businessProfile ?? cfg?.business ?? {}) as BusinessProfile;
 
       setBusinessName(p.businessName ?? cfg?.business?.name ?? '');
@@ -47,9 +48,9 @@ export const BusinessSettings = ({ onDone }: { onDone?: () => void }) => {
     setMsg('');
     if (!businessName.trim()) return setMsg('El nombre del negocio es obligatorio.');
 
-    const cfg = await window.api.config.get();
+    const cfg = await getConfig();
 
-    await window.api.config.set({
+    await setConfig({
       ...cfg,
       businessProfile: {
         businessName: businessName.trim(),
