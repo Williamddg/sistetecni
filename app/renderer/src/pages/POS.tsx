@@ -44,6 +44,81 @@ type CartItem = {
   unit_cost: number;
 };
 
+type PosProduct = {
+  id: string;
+  name?: string;
+  brand?: string;
+  model?: string;
+  sku?: string;
+  barcode?: string;
+  cpu?: string;
+  stock?: number | null;
+  sale_price?: number;
+  unit_cost?: number;
+};
+
+type DrawerPort = { path: string; friendlyName?: string };
+type DrawerPrinter = { name: string };
+
+type SuspendedSaleRow = {
+  id: string;
+  temp_number?: string;
+  tempNumber?: string;
+  customer_name?: string;
+  customerName?: string;
+  total?: number;
+};
+
+type RecentSaleRow = {
+  id: string;
+  invoice_number?: string;
+  invoiceNumber?: string;
+  customer_name?: string;
+  customerName?: string;
+  total?: number;
+};
+
+type SaleDetailItem = {
+  id: string;
+  product_id?: string | null;
+  name?: string;
+  description?: string;
+  qty?: number;
+  unit_price?: number;
+  line_total?: number;
+  stock?: number | null;
+  unit_cost?: number;
+};
+
+type SaleDetail = {
+  id: string;
+  invoice_number?: string;
+  invoiceNumber?: string;
+  date?: string;
+  user_name?: string;
+  user_email?: string;
+  payment_method?: string;
+  customer_name?: string;
+  customerName?: string;
+  customer_id?: string;
+  subtotal?: number;
+  discount?: number;
+  total?: number;
+  items?: SaleDetailItem[];
+};
+
+const toDrawerPorts = (value: unknown): DrawerPort[] =>
+  Array.isArray(value) ? (value as DrawerPort[]) : [];
+
+const toDrawerPrinters = (value: unknown): DrawerPrinter[] =>
+  Array.isArray(value) ? (value as DrawerPrinter[]) : [];
+
+const toSuspendedRows = (value: unknown): SuspendedSaleRow[] =>
+  Array.isArray(value) ? (value as SuspendedSaleRow[]) : [];
+
+const toRecentRows = (value: unknown): RecentSaleRow[] =>
+  Array.isArray(value) ? (value as RecentSaleRow[]) : [];
+
 const money = (n: number): string => {
   return new Intl.NumberFormat('es-CO', {
     style: 'currency',
