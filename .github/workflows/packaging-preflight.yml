@@ -1,0 +1,59 @@
+name: Packaging Preflight
+
+on:
+  pull_request:
+    paths:
+      - 'package.json'
+      - 'scripts/packaging/**'
+      - 'build/installer.nsh'
+      - 'resources/**'
+      - '.github/workflows/packaging-preflight.yml'
+  workflow_dispatch:
+
+jobs:
+  packaging-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build app (required for packaging checks)
+        run: npm run build
+
+      - name: Run packaging static checks
+        run: npm run packaging:check
+
+  packaging-validate-dir:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build app (required for packaging target validation)
+        run: npm run build
+
+      - name: Run packaging target validation (dir)
+        run: npm run packaging:validate:dir
