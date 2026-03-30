@@ -1,16 +1,9 @@
 import { useEffect, useState } from "react";
 import { login } from "../services/auth";
 import logo from "../assets/logo.png";
+import type { SessionUser } from "../types";
 
-type LoginUser = {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  mustChangePassword?: boolean;
-};
-
-export const Login = ({ onLogin }: { onLogin: (u: any) => void }) => {
+export const Login = ({ onLogin }: { onLogin: (u: SessionUser) => void }) => {
   const [email, setEmail] = useState("admin@sistetecni.com");
   const [password, setPassword] = useState("admin");
   const [error, setError] = useState("");
@@ -40,7 +33,7 @@ export const Login = ({ onLogin }: { onLogin: (u: any) => void }) => {
     setLoading(true);
 
     try {
-      const u = (await login(email.trim(), password)) as LoginUser;
+      const u = await login(email.trim(), password);
 
       if (u?.mustChangePassword) {
         onLogin({ ...u, _forceChangePassword: true });
@@ -48,8 +41,8 @@ export const Login = ({ onLogin }: { onLogin: (u: any) => void }) => {
       }
 
       onLogin(u);
-    } catch (e: any) {
-      const msg = String(e?.message ?? e ?? "Error");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e ?? "Error");
 
       if (msg.toLowerCase().includes("credenciales")) {
         setError("Credenciales inválidas.");

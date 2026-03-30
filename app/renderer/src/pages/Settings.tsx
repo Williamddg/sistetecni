@@ -1,28 +1,12 @@
 import { useEffect, useState } from 'react';
-import { getAuthContext } from '../services/session';
-
-type DbMode = 'sqlite' | 'mysql';
-
-type AppConfig = {
-  dbMode: DbMode;
-  mysql?: {
-    host: string;
-    user: string;
-    password: string;
-    database: string;
-  };
-};
-
-declare global {
-  interface Window {
-    api: any;
-  }
-}
+import { type AppConfig, getConfig, setConfig } from '../services/config';
+import { getRendererApi } from '../services/rendererApi';
 
 export const Settings = ({ role }: { role: 'ADMIN' | 'SUPERVISOR' | 'SELLER' }) => {
+  const api = getRendererApi();
   const [loading, setLoading] = useState(true);
 
-  const [dbMode, setDbMode] = useState<DbMode>('sqlite');
+  const [dbMode, setDbMode] = useState<'sqlite' | 'mysql'>('sqlite');
   const [host, setHost] = useState('');
   const [user, setUser] = useState('root');
   const [password, setPassword] = useState('');
@@ -34,15 +18,16 @@ export const Settings = ({ role }: { role: 'ADMIN' | 'SUPERVISOR' | 'SELLER' }) 
     (async () => {
       try {
         setLoading(true);
-        const cfg = (await window.api.config.get()) as AppConfig;
+        const cfg = await getConfig();
 
         setDbMode(cfg?.dbMode ?? 'sqlite');
         setHost(cfg?.mysql?.host ?? '');
         setUser(cfg?.mysql?.user ?? 'root');
         setPassword(cfg?.mysql?.password ?? '');
         setDatabase(cfg?.mysql?.database ?? 'sistetecni_pos');
-      } catch (e: any) {
-        setMsg(e?.message || 'No se pudo cargar la configuración');
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e ?? '');
+        setMsg(message || 'No se pudo cargar la configuración');
       } finally {
         setLoading(false);
       }
@@ -70,10 +55,11 @@ export const Settings = ({ role }: { role: 'ADMIN' | 'SUPERVISOR' | 'SELLER' }) 
             }
           : { dbMode: 'sqlite' };
 
-      await window.api.config.set({ ...getAuthContext(), ...cfg });
+      await setConfig(cfg);
       setMsg('Guardado. Reiniciando...');
-    } catch (e: any) {
-      setMsg(e?.message || 'No se pudo guardar');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e ?? '');
+      setMsg(message || 'No se pudo guardar');
     }
   };
 
@@ -170,7 +156,7 @@ export const Settings = ({ role }: { role: 'ADMIN' | 'SUPERVISOR' | 'SELLER' }) 
             className="btn btn--ghost"
             onClick={async () => {
               try {
-                await window.api.mysql.initSchema();
+                await api.mysql.initSchema();
                 alert('Esquema creado correctamente.');
               } catch (err) {
                 alert('Error creando el esquema.');

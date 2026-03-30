@@ -2,27 +2,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { Bar } from 'react-chartjs-2';
 import { CategoryScale, Chart as ChartJS, LinearScale, BarElement } from 'chart.js';
 import { salesByDay, summary, topProducts } from '../services/reports';
+import {
+  toReportSummary,
+  toSalesByDayPoints,
+  toTopProductPoints,
+  type ReportSummary,
+  type SalesByDayPoint,
+  type TopProductPoint,
+} from '../services/reportAdapters';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement);
-
-const asArray = (v: any): any[] => {
-  if (Array.isArray(v)) return v;
-  if (Array.isArray(v?.rows)) return v.rows;
-  if (Array.isArray(v?.data)) return v.data;
-  if (Array.isArray(v?.result)) return v.result;
-  if (Array.isArray(v?.items)) return v.items;
-  return [];
-};
-
-const asObject = (v: any): any => {
-  if (v && typeof v === 'object' && !Array.isArray(v)) {
-    if (v.data && typeof v.data === 'object') return v.data;
-    if (v.row && typeof v.row === 'object') return v.row;
-    if (v.result && typeof v.result === 'object') return v.result;
-    return v;
-  }
-  return {};
-};
 
 const isoDate = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -33,17 +22,19 @@ const money = (n: number): string =>
     maximumFractionDigits: 0,
   }).format(Number(n || 0));
 
+const EMPTY_SUMMARY: ReportSummary = {
+  totalSales: 0,
+  totalReturns: 0,
+  netSales: 0,
+  totalCosts: 0,
+  totalExpenses: 0,
+  utility: 0,
+};
+
 export const Reports = () => {
-  const [data, setData] = useState<any[]>([]);
-  const [top, setTop] = useState<any[]>([]);
-  const [sum, setSum] = useState<any>({
-    total_sales: 0,
-    total_returns: 0,
-    net_sales: 0,
-    total_costs: 0,
-    total_expenses: 0,
-    utility: 0,
-  });
+  const [data, setData] = useState<SalesByDayPoint[]>([]);
+  const [top, setTop] = useState<TopProductPoint[]>([]);
+  const [sum, setSum] = useState<ReportSummary>(EMPTY_SUMMARY);
   const [error, setError] = useState('');
 
   const from = useMemo(() => isoDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)), []);
@@ -60,54 +51,20 @@ export const Reports = () => {
           summary(from, to),
         ]);
 
-        const d = asArray(dRaw);
-        const t = asArray(tRaw);
-        const s = asObject(sRaw);
-
-        const totalSales = Number(s.total_sales ?? s.total ?? 0);
-        const totalReturns = Number(s.total_returns ?? s.returns ?? 0);
-        const netSales = Number(s.net_sales ?? (totalSales - totalReturns));
-        const totalCosts = Number(s.total_costs ?? s.costs ?? 0);
-        const totalExpenses = Number(s.total_expenses ?? s.expenses ?? 0);
-
-        setData(d);
-        setTop(t);
-
-        setSum({
-          total_sales: totalSales,
-          total_returns: totalReturns,
-          net_sales: netSales,
-          total_costs: totalCosts,
-          total_expenses: totalExpenses,
-          utility: netSales - totalCosts - totalExpenses,
-        });
-
+        setData(toSalesByDayPoints(dRaw));
+        setTop(toTopProductPoints(tRaw));
+        setSum(toReportSummary(sRaw));
       } catch (e: any) {
         setError(e?.message || 'No se pudieron cargar los reportes');
         setData([]);
         setTop([]);
-
-        setSum({
-          total_sales: 0,
-          total_returns: 0,
-          net_sales: 0,
-          total_costs: 0,
-          total_expenses: 0,
-          utility: 0,
-        });
+        setSum(EMPTY_SUMMARY);
       }
     })();
   }, [from, to]);
 
-  const labels = useMemo(
-    () => asArray(data).map((d: any) => String(d?.day ?? d?.date ?? '')),
-    [data],
-  );
-
-  const totals = useMemo(
-    () => asArray(data).map((d: any) => Number(d?.total ?? d?.total_sales ?? 0)),
-    [data],
-  );
+  const labels = useMemo(() => data.map((d) => d.label), [data]);
+  const totals = useMemo(() => data.map((d) => d.total), [data]);
 
   return (
     <div className="dashboard">
@@ -127,27 +84,27 @@ export const Reports = () => {
 
         <div className="card stat-card">
           <div className="stat-card__label">Ventas brutas</div>
-          <div className="stat-card__value">{money(sum.total_sales)}</div>
+          <div className="stat-card__value">{money(sum.totalSales)}</div>
         </div>
 
         <div className="card stat-card">
           <div className="stat-card__label">Devoluciones</div>
-          <div className="stat-card__value">{money(sum.total_returns)}</div>
+          <div className="stat-card__value">{money(sum.totalReturns)}</div>
         </div>
 
         <div className="card stat-card">
           <div className="stat-card__label">Ventas netas</div>
-          <div className="stat-card__value">{money(sum.net_sales)}</div>
+          <div className="stat-card__value">{money(sum.netSales)}</div>
         </div>
 
         <div className="card stat-card">
           <div className="stat-card__label">Gastos</div>
-          <div className="stat-card__value">{money(sum.total_expenses)}</div>
+          <div className="stat-card__value">{money(sum.totalExpenses)}</div>
         </div>
 
         <div className="card stat-card">
           <div className="stat-card__label">Costos</div>
-          <div className="stat-card__value">{money(sum.total_costs)}</div>
+          <div className="stat-card__value">{money(sum.totalCosts)}</div>
         </div>
 
         <div className="card stat-card">
@@ -197,14 +154,14 @@ export const Reports = () => {
       <div className="card">
         <div className="dashboard__section-title">Top productos</div>
 
-        {asArray(top).length === 0 && (
+        {top.length === 0 && (
           <div style={{ opacity: 0.8 }}>Sin datos.</div>
         )}
 
         <div style={{ display: 'grid', gap: 10 }}>
-          {asArray(top).map((t: any, i: number) => (
+          {top.map((t, i) => (
             <div
-              key={String(t?.name ?? i)}
+              key={String(t.name || i)}
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -216,11 +173,11 @@ export const Reports = () => {
               }}
             >
               <span style={{ fontWeight: 700 }}>
-                {String(t?.name ?? '')}
+                {t.name}
               </span>
 
               <span style={{ color: 'var(--muted)' }}>
-                {Number(t?.qty ?? 0)} vendidos
+                {t.qty} vendidos
               </span>
             </div>
           ))}
