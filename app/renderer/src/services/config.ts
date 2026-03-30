@@ -1,8 +1,18 @@
+import { getRendererApi } from './rendererApi';
+
 export type BusinessConfig = {
   name?: string;
   logoDataUrl?: string;
   nit?: string;
   phone?: string;
+};
+
+export type MySqlConfig = {
+  host?: string;
+  user?: string;
+  password?: string;
+  database?: string;
+  port?: number;
 };
 
 export type BusinessProfileConfig = {
@@ -15,15 +25,17 @@ export type BusinessProfileConfig = {
 
 export type AppConfig = {
   dbMode?: 'sqlite' | 'mysql';
-  mysql?: any;
+  mysql?: MySqlConfig;
   business?: BusinessConfig;
   businessProfile?: BusinessProfileConfig;
 };
 
 export const getConfig = async (): Promise<AppConfig> => {
-  return await window.api.config.get();
+  const api = getRendererApi();
+  return (await api.config.get()) as AppConfig;
 };
 
 export const setConfig = async (patch: Partial<AppConfig>) => {
-  return await window.api.config.set(patch);
+  const api = getRendererApi();
+  return await api.config.set(patch);
 };
