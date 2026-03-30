@@ -1,8 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
-import { archiveProduct, listProducts, saveProduct, updateProduct } from '../services/products';
+import {
+  archiveProduct,
+  listProducts,
+  saveProduct,
+  updateProduct,
+  type ProductRow,
+  type ProductUpsertInput,
+} from '../services/products';
 import { Modal } from '../ui/Modal';
 
-const base = {
+type InventoryForm = ProductUpsertInput;
+
+const base: InventoryForm = {
   name: '',
   barcode: '',
   category: '',
@@ -33,7 +42,7 @@ const FIELDS: Array<{
   { key: 'notes', label: 'Notas', placeholder: 'Observaciones opcionales' },
 ];
 
-const isInvalid = (data: any) =>
+const isInvalid = (data: InventoryForm) =>
   data.stock < 0 || data.min_stock < 0 || data.purchase_price < 0 || data.sale_price < 0;
 
 const money = (n: number): string =>
@@ -44,11 +53,11 @@ const money = (n: number): string =>
   }).format(Number(n || 0));
 
 export const Inventory = ({ role }: { role: string }) => {
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<ProductRow[]>([]);
   const [q, setQ] = useState('');
-  const [form, setForm] = useState<any>(base);
-  const [editing, setEditing] = useState<any | null>(null);
-  const [editForm, setEditForm] = useState<any>(base);
+  const [form, setForm] = useState<InventoryForm>(base);
+  const [editing, setEditing] = useState<ProductRow | null>(null);
+  const [editForm, setEditForm] = useState<InventoryForm>(base);
   const [busy, setBusy] = useState(false);
   const loadId = useRef(0);
 
@@ -57,8 +66,11 @@ export const Inventory = ({ role }: { role: string }) => {
     try {
       const data = await listProducts(query);
       if (id === loadId.current) setItems(data);
-    } catch (e: any) {
-      if (id === loadId.current) alert(e?.message || 'No se pudo cargar el inventario.');
+    } catch (e: unknown) {
+      if (id === loadId.current) {
+        const message = e instanceof Error ? e.message : String(e ?? '');
+        alert(message || 'No se pudo cargar el inventario.');
+      }
     }
   };
 
@@ -78,14 +90,19 @@ export const Inventory = ({ role }: { role: string }) => {
     if (!editing) setEditForm(base);
   }, [editing]);
 
-  const onChange = (setter: any, data: any, key: string, value: string) => {
+  const onChange = (
+    setter: (next: InventoryForm) => void,
+    data: InventoryForm,
+    key: keyof InventoryForm,
+    value: string,
+  ) => {
     setter({
       ...data,
-      [key]: (numericKeys as readonly string[]).includes(key) ? Number(value) : value,
+      [key]: (numericKeys as readonly string[]).includes(String(key)) ? Number(value) : value,
     });
   };
 
-  const validateRequired = (data: any): string | null => {
+  const validateRequired = (data: InventoryForm): string | null => {
     if (!String(data?.name ?? '').trim()) return 'El nombre del producto es obligatorio.';
     return null;
   };
@@ -139,11 +156,12 @@ export const Inventory = ({ role }: { role: string }) => {
                   notes: String(form.notes || '').trim(),
                 };
 
-                await saveProduct(payload);
+                await saveProduct(payload as ProductUpsertInput);
                 setForm(base);
                 await load(q);
-              } catch (e: any) {
-                alert(e?.message || 'No se pudo guardar el producto.');
+              } catch (e: unknown) {
+                const message = e instanceof Error ? e.message : String(e ?? '');
+                alert(message || 'No se pudo guardar el producto.');
               } finally {
                 setBusy(false);
               }
@@ -189,7 +207,7 @@ export const Inventory = ({ role }: { role: string }) => {
             </tr>
           </thead>
           <tbody>
-            {items.map((p: any) => {
+            {items.map((p) => {
               const min = Number(p.min_stock ?? 0);
               const stk = Number(p.stock ?? 0);
               const low = min > 0 ? stk <= min : stk <= 1;
@@ -227,14 +245,15 @@ export const Inventory = ({ role }: { role: string }) => {
                           disabled={busy}
                           onClick={async () => {
                             const prevItems = items;
-                            setItems(prevItems.filter((x: any) => x.id !== p.id));
+                            setItems(prevItems.filter((x) => x.id !== p.id));
                             setBusy(true);
                             try {
                               await archiveProduct(p.id);
                               await load(q);
-                            } catch (e: any) {
+                            } catch (e: unknown) {
                               setItems(prevItems);
-                              alert(e?.message || 'No se pudo archivar el producto.');
+                              const message = e instanceof Error ? e.message : String(e ?? '');
+                              alert(message || 'No se pudo archivar el producto.');
                             } finally {
                               setBusy(false);
                             }
@@ -303,11 +322,12 @@ export const Inventory = ({ role }: { role: string }) => {
                   notes: String(editForm.notes || '').trim(),
                 };
 
-                await updateProduct(payload);
+                await updateProduct(payload as ProductUpsertInput);
                 setEditing(null);
                 await load(q);
-              } catch (e: any) {
-                alert(e?.message || 'No se pudo actualizar el producto.');
+              } catch (e: unknown) {
+                const message = e instanceof Error ? e.message : String(e ?? '');
+                alert(message || 'No se pudo actualizar el producto.');
               } finally {
                 setBusy(false);
               }

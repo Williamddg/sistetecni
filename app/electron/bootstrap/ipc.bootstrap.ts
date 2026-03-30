@@ -12,6 +12,7 @@ import { registerConfigIpc } from '../ipc/config.ipc';
 import { registerCashDrawerIpc } from '../ipc/cashdrawer.ipc';
 import { registerInstallerIpc } from '../ipc/installer.ipc';
 import { registerAutoDetectIpc } from '../ipc/autodetect.ipc';
+import { registerSyncAdminIpc } from '../ipc/syncAdmin.ipc';
 
 export const registerEarlyIpcHandlers = (): void => {
   registerAutoDetectIpc();
@@ -31,4 +32,5 @@ export const registerDomainIpcHandlers = (): void => {
   registerUsersIpc();
   registerAuditIpc();
   registerConfigIpc();
+  registerSyncAdminIpc();
 };
