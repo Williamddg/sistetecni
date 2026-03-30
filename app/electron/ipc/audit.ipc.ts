@@ -20,8 +20,8 @@ const isAuditLogAction = (v: any): v is AuditLogAction => {
 };
 
 export const registerAuditIpc = (): void => {
-  ipcMain.handle('audit:list', async (_e, payload) => {
-    requirePermissionFromPayload(payload, 'audit:read');
+  ipcMain.handle('audit:list', async (event, payload) => {
+    requirePermissionFromPayload(event, payload, 'audit:read');
 
     const from = String((payload as any)?.from ?? '');
     const to = String((payload as any)?.to ?? '');
