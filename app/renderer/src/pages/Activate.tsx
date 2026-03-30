@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/logo.png";
+import { activateLicense, isLicenseApiAvailable } from "../services/license";
 
 export const Activate = () => {
   const [licenseKey, setLicenseKey] = useState("");
@@ -9,8 +10,6 @@ export const Activate = () => {
   const [showCard, setShowCard] = useState(false);
 
   const navigate = useNavigate();
-  const api = (window as any).api;
-
   const whatsappNumber = "573043547758";
   const version = "v1.0.0";
 
@@ -27,7 +26,7 @@ export const Activate = () => {
     window.open(url, "_blank");
   };
 
-  if (!api?.license?.activate) {
+  if (!isLicenseApiAvailable()) {
     return (
       <div
         style={{
@@ -67,7 +66,7 @@ export const Activate = () => {
     setLoading(true);
 
     try {
-      const res = await api.license.activate(licenseKey.trim());
+      const res = await activateLicense(licenseKey.trim());
 
       if (!res?.ok) {
         setError(res?.message || "Licencia inválida o vencida.");
@@ -75,8 +74,9 @@ export const Activate = () => {
       }
 
       navigate("/dashboard", { replace: true });
-    } catch (err: any) {
-      setError(err?.message || "Error activando licencia");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err ?? "");
+      setError(message || "Error activando licencia");
     } finally {
       setLoading(false);
     }

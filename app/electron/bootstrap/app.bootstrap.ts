@@ -8,7 +8,12 @@ import { checkForAppUpdates, setupAutoUpdates } from './updater.bootstrap';
 export const runAppBootstrap = async (): Promise<void> => {
   registerEarlyIpcHandlers();
 
-  getDb();
+  try {
+    getDb();
+  } catch (error) {
+    console.error('[bootstrap] Error inicializando SQLite local:', error);
+    throw error;
+  }
 
   registerDomainIpcHandlers();
 
@@ -19,14 +24,18 @@ export const runAppBootstrap = async (): Promise<void> => {
   await checkForAppUpdates();
 
   setInterval(async () => {
-    const dbMode = await getDbMode();
-    console.log('DB MODE:', dbMode);
+    try {
+      const dbMode = await getDbMode();
+      console.log('DB MODE:', dbMode);
 
-    if (dbMode === 'mysql') {
-      const syncResult = await runFallbackResyncCycle({ limit: 25 });
-      if (syncResult.attempted > 0) {
-        console.log('[fallback-sync]', syncResult);
+      if (dbMode === 'mysql') {
+        const syncResult = await runFallbackResyncCycle({ limit: 25 });
+        if (syncResult.attempted > 0) {
+          console.log('[fallback-sync]', syncResult);
+        }
       }
+    } catch (error) {
+      console.error('[bootstrap:fallback-sync] ciclo omitido por error controlado:', error);
     }
   }, 5000);
 };

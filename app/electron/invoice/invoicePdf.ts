@@ -1,12 +1,21 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { app } from 'electron';
 import PDFDocument from 'pdfkit';
+import { ensureUserDataSubdir } from '../services/storagePaths.service';
+
+export const toSafeInvoiceFileName = (invoiceNumber: unknown): string => {
+  const raw = String(invoiceNumber ?? '').trim() || 'invoice';
+  const cleaned = raw
+    .replace(/[<>:"/\\|?*\x00-\x1F]/g, '-')
+    .replace(/\s+/g, '_')
+    .replace(/-+/g, '-')
+    .replace(/^[-_.]+|[-_.]+$/g, '');
+  return cleaned || 'invoice';
+};
 
 export const generateInvoicePdf = async (invoice: any): Promise<string> => {
-  const dir = path.join(app.getPath('userData'), 'invoices');
-  fs.mkdirSync(dir, { recursive: true });
-  const filePath = path.join(dir, `${invoice.invoiceNumber}.pdf`);
+  const dir = ensureUserDataSubdir('invoices');
+  const filePath = path.join(dir, `${toSafeInvoiceFileName(invoice.invoiceNumber)}.pdf`);
 
   await new Promise<void>((resolve, reject) => {
     const doc = new PDFDocument({ margin: 40 });
