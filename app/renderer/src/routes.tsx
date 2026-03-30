@@ -13,18 +13,19 @@ import { Audit } from './pages/Audit';
 import { Activate } from './pages/Activate';
 import { RequireLicense } from './auth/RequireLicense';
 import { DailyClose } from './pages/DailyClose';
+import type { SessionUser } from './types';
 
 const RequirePermission = ({
   user,
   permission,
   children,
 }: {
-  user: any;
+  user: SessionUser;
   permission: Permission;
   children: JSX.Element;
 }) => (can(user?.role, permission) ? children : <Navigate to="/pos" replace />);
 
-export const AppRoutes = ({ user, onLogout }: { user: any; onLogout: () => void }) => (
+export const AppRoutes = ({ user, onLogout }: { user: SessionUser; onLogout: () => void }) => (
   <Routes>
     {/* Ruta pública para activar licencia */}
     <Route path="/activate" element={<Activate />} />
