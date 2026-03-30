@@ -148,7 +148,7 @@ async function seedAdminIfMissing(): Promise<void> {
   );
 }
 
-export async function initMySqlSchema(): Promise<{ ok: true }> {
+export async function initMySqlSchema(options: { skipDefaultAdminSeed?: boolean } = {}): Promise<{ ok: true }> {
   await mysqlExec(`
     CREATE TABLE IF NOT EXISTS users (
       id VARCHAR(36) PRIMARY KEY,
@@ -440,7 +440,9 @@ export async function initMySqlSchema(): Promise<{ ok: true }> {
   await ensureDateTimeColumn('suspended_sales', 'created_at');
   await ensureDateTimeColumn('suspended_sales', 'updated_at');
 
-  await seedAdminIfMissing();
+  if (!options.skipDefaultAdminSeed) {
+    await seedAdminIfMissing();
+  }
 
   return { ok: true };
 }

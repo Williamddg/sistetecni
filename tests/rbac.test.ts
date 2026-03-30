@@ -13,6 +13,7 @@ describe('permissions RBAC', () => {
     expect(can('SUPERVISOR', 'sales:read:all')).toBe(true);
     expect(can('SUPERVISOR', 'cash:openclose')).toBe(true);
     expect(can('SUPERVISOR', 'reports:read')).toBe(true);
+    expect(can('SUPERVISOR', 'inventory:write')).toBe(true);
     expect(can('SUPERVISOR', 'users:write')).toBe(false);
   });
 
@@ -29,6 +30,9 @@ describe('permissions RBAC', () => {
       'inventory:read',
       'inventory:write',
       'audit:read',
+      'expenses:read',
+      'expenses:write',
+      'backup:write',
       'config:write',
     ];
 
@@ -41,6 +45,6 @@ describe('permissions RBAC', () => {
 
   test('requirePermission throws FORBIDDEN when role cannot', () => {
     expect(() => requirePermission('SELLER', 'users:write')).toThrow('FORBIDDEN');
-    expect(() => requirePermission('SUPERVISOR', 'inventory:write')).toThrow('FORBIDDEN');
+    expect(() => requirePermission('SUPERVISOR', 'config:write')).toThrow('FORBIDDEN');
   });
 });
