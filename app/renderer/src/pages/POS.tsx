@@ -15,6 +15,7 @@ import { Modal } from '../ui/Modal';
 import { buildInvoiceHtml } from '../invoice/invoiceTemplate';
 import { getConfig } from '../services/config';
 import { ipc } from '../services/ipcClient';
+import type { SessionUser } from '../types';
 
 type CartItem = {
   cart_id: string;
@@ -28,6 +29,81 @@ type CartItem = {
   unit_cost: number;
 };
 
+type PosProduct = {
+  id: string;
+  name?: string;
+  brand?: string;
+  model?: string;
+  sku?: string;
+  barcode?: string;
+  cpu?: string;
+  stock?: number | null;
+  sale_price?: number;
+  unit_cost?: number;
+};
+
+type DrawerPort = { path: string; friendlyName?: string };
+type DrawerPrinter = { name: string };
+
+type SuspendedSaleRow = {
+  id: string;
+  temp_number?: string;
+  tempNumber?: string;
+  customer_name?: string;
+  customerName?: string;
+  total?: number;
+};
+
+type RecentSaleRow = {
+  id: string;
+  invoice_number?: string;
+  invoiceNumber?: string;
+  customer_name?: string;
+  customerName?: string;
+  total?: number;
+};
+
+type SaleDetailItem = {
+  id: string;
+  product_id?: string | null;
+  name?: string;
+  description?: string;
+  qty?: number;
+  unit_price?: number;
+  line_total?: number;
+  stock?: number | null;
+  unit_cost?: number;
+};
+
+type SaleDetail = {
+  id: string;
+  invoice_number?: string;
+  invoiceNumber?: string;
+  date?: string;
+  user_name?: string;
+  user_email?: string;
+  payment_method?: string;
+  customer_name?: string;
+  customerName?: string;
+  customer_id?: string;
+  subtotal?: number;
+  discount?: number;
+  total?: number;
+  items?: SaleDetailItem[];
+};
+
+const toDrawerPorts = (value: unknown): DrawerPort[] =>
+  Array.isArray(value) ? (value as DrawerPort[]) : [];
+
+const toDrawerPrinters = (value: unknown): DrawerPrinter[] =>
+  Array.isArray(value) ? (value as DrawerPrinter[]) : [];
+
+const toSuspendedRows = (value: unknown): SuspendedSaleRow[] =>
+  Array.isArray(value) ? (value as SuspendedSaleRow[]) : [];
+
+const toRecentRows = (value: unknown): RecentSaleRow[] =>
+  Array.isArray(value) ? (value as RecentSaleRow[]) : [];
+
 const money = (n: number): string => {
   return new Intl.NumberFormat('es-CO', {
     style: 'currency',
@@ -36,7 +112,7 @@ const money = (n: number): string => {
   }).format(Number(n || 0));
 };
 
-export const POS = ({ user }: { user: any }) => {
+export const POS = ({ user }: { user: SessionUser }) => {
   const scanRef = useRef<HTMLInputElement | null>(null);
   const [scanValue, setScanValue] = useState('');
   const scanTimer = useRef<number | null>(null);
@@ -46,7 +122,7 @@ export const POS = ({ user }: { user: any }) => {
   };
 
   const [q, setQ] = useState('');
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<PosProduct[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discount, setDiscount] = useState(0);
   const [paymentMethod, setPayment] = useState('EFECTIVO');
@@ -73,10 +149,10 @@ export const POS = ({ user }: { user: any }) => {
 
   const [suspendedOpen, setSuspendedOpen] = useState(false);
   const [recentOpen, setRecentOpen] = useState(false);
-  const [suspendedRows, setSuspendedRows] = useState<any[]>([]);
-  const [recentRows, setRecentRows] = useState<any[]>([]);
+  const [suspendedRows, setSuspendedRows] = useState<SuspendedSaleRow[]>([]);
+  const [recentRows, setRecentRows] = useState<RecentSaleRow[]>([]);
   const [detailOpen, setDetailOpen] = useState(false);
-  const [saleDetail, setSaleDetail] = useState<any | null>(null);
+  const [saleDetail, setSaleDetail] = useState<SaleDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
   const [drawerBusy, setDrawerBusy] = useState(false);
@@ -94,8 +170,8 @@ export const POS = ({ user }: { user: any }) => {
   const [drawerPrinterName, setDrawerPrinterName] = useState(
     localStorage.getItem('cashdrawer_printer_name') || '',
   );
-  const [drawerPorts, setDrawerPorts] = useState<any[]>([]);
-  const [drawerPrinters, setDrawerPrinters] = useState<any[]>([]);
+  const [drawerPorts, setDrawerPorts] = useState<DrawerPort[]>([]);
+  const [drawerPrinters, setDrawerPrinters] = useState<DrawerPrinter[]>([]);
 
   useEffect(() => {
     focusScanner();
@@ -120,15 +196,15 @@ export const POS = ({ user }: { user: any }) => {
     (async () => {
       try {
         const ports = await ipc.cashdrawer.listPorts();
-        setDrawerPorts(Array.isArray(ports) ? ports : []);
+        setDrawerPorts(toDrawerPorts(ports));
 
         const printers = await ipc.cashdrawer.listPrinters();
-        setDrawerPrinters(Array.isArray(printers) ? printers : []);
+        setDrawerPrinters(toDrawerPrinters(printers));
 
         if (!localStorage.getItem('cashdrawer_printer_name') && Array.isArray(printers) && printers.length > 0) {
           const preferred =
-            printers.find((p: any) => String(p?.name || '').toLowerCase().includes('ncr')) ||
-            printers.find((p: any) => String(p?.name || '').toLowerCase().includes('generic')) ||
+            printers.find((p: DrawerPrinter) => String(p?.name || '').toLowerCase().includes('ncr')) ||
+            printers.find((p: DrawerPrinter) => String(p?.name || '').toLowerCase().includes('generic')) ||
             printers[0];
 
           if (preferred?.name) {
@@ -141,7 +217,7 @@ export const POS = ({ user }: { user: any }) => {
   }, []);
 
   const [askPrint, setAskPrint] = useState(false);
-  const [pendingInvoice, setPendingInvoice] = useState<any>(null);
+  const [pendingInvoice, setPendingInvoice] = useState<{ html: string; invoiceNumber: string } | null>(null);
 
   const onRootClick = (e: React.MouseEvent) => {
     const el = e.target as HTMLElement;
@@ -163,7 +239,7 @@ export const POS = ({ user }: { user: any }) => {
   const mustHaveCash = paymentMethod === 'EFECTIVO';
   const canConfirm = cart.length > 0 && !isProcessing && (!mustHaveCash || cashReceived >= total);
 
-  const displayName = (p: any): string => {
+  const displayName = (p: PosProduct): string => {
     const n = String(p?.name ?? '').trim();
     if (n) return n;
     const legacy = `${p?.brand ?? ''} ${p?.model ?? ''}`.trim();
@@ -190,7 +266,7 @@ export const POS = ({ user }: { user: any }) => {
     );
   };
 
-  const addFromProduct = (p: any): void => {
+  const addFromProduct = (p: PosProduct): void => {
     setMessage('');
 
     setCart((current) => {
@@ -330,7 +406,7 @@ export const POS = ({ user }: { user: any }) => {
   const loadSuspended = async () => {
     try {
       const rows = await listSuspendedSales();
-      setSuspendedRows(Array.isArray(rows) ? rows : []);
+      setSuspendedRows(toSuspendedRows(rows));
     } catch (e: any) {
       setMessage(e?.message || 'No se pudieron cargar las suspendidas.');
     }
@@ -339,7 +415,7 @@ export const POS = ({ user }: { user: any }) => {
   const loadRecent = async () => {
     try {
       const rows = await listRecentSales(30);
-      setRecentRows(Array.isArray(rows) ? rows : []);
+      setRecentRows(toRecentRows(rows));
     } catch (e: any) {
       setMessage(e?.message || 'No se pudieron cargar las ventas recientes.');
     }
@@ -395,7 +471,7 @@ export const POS = ({ user }: { user: any }) => {
       const items = Array.isArray(detail.items) ? detail.items : [];
 
       setCart(
-        items.map((item: any) => ({
+        items.map((item: SaleDetailItem) => ({
           cart_id: `${item.product_id ?? 'free'}-${item.id}-${Date.now()}`,
           product_id: item.product_id ?? null,
           description: item.description ?? '',
@@ -485,7 +561,7 @@ export const POS = ({ user }: { user: any }) => {
         saleId: saleDetail.id,
         userId: user.id,
         reason: 'Devolución desde POS',
-        items: detailItems.map((item: any) => ({
+        items: detailItems.map((item: SaleDetailItem) => ({
           sale_item_id: item.id,
           qty: Number(item.qty ?? 0),
         })),
@@ -609,7 +685,7 @@ export const POS = ({ user }: { user: any }) => {
         businessLogoDataUrl: biz?.logoDataUrl || '',
         businessNit: biz?.nit || '',
         businessPhone: biz?.phone || '',
-        items: cart.map((i: any) => ({
+        items: cart.map((i) => ({
           name: i.name,
           description: i.description || '',
           qty: Number(i.qty ?? 0),
@@ -721,7 +797,7 @@ export const POS = ({ user }: { user: any }) => {
           </div>
 
           <div className="pos__products">
-            {products.map((p: any) => (
+            {products.map((p) => (
               <button
                 key={p.id}
                 className="pos__product"
@@ -1138,7 +1214,7 @@ export const POS = ({ user }: { user: any }) => {
                       disabled={drawerBusy}
                     >
                       <option value="">Selecciona una impresora</option>
-                      {drawerPrinters.map((p: any) => (
+                      {drawerPrinters.map((p) => (
                         <option key={p.name} value={p.name}>
                           {p.name}
                         </option>
@@ -1158,7 +1234,7 @@ export const POS = ({ user }: { user: any }) => {
                         disabled={drawerBusy}
                       >
                         <option value="">Selecciona un puerto</option>
-                        {drawerPorts.map((p: any) => (
+                        {drawerPorts.map((p) => (
                           <option key={p.path} value={p.path}>
                             {p.path} {p.friendlyName ? `- ${p.friendlyName}` : ''}
                           </option>
@@ -1258,7 +1334,7 @@ export const POS = ({ user }: { user: any }) => {
         <div style={{ display: 'grid', gap: 10 }}>
           {suspendedRows.length === 0 && <div style={{ opacity: 0.8 }}>No hay ventas suspendidas.</div>}
 
-          {suspendedRows.map((row: any) => (
+          {suspendedRows.map((row) => (
             <div
               key={row.id}
               style={{
@@ -1293,7 +1369,7 @@ export const POS = ({ user }: { user: any }) => {
         <div style={{ display: 'grid', gap: 10 }}>
           {recentRows.length === 0 && <div style={{ opacity: 0.8 }}>No hay ventas recientes.</div>}
 
-          {recentRows.map((row: any) => (
+          {recentRows.map((row) => (
             <div
               key={row.id}
               style={{
@@ -1342,7 +1418,7 @@ export const POS = ({ user }: { user: any }) => {
             </div>
 
             <div style={{ display: 'grid', gap: 8 }}>
-              {(saleDetail.items ?? []).map((item: any) => (
+              {(saleDetail.items ?? []).map((item) => (
                 <div
                   key={item.id}
                   style={{
