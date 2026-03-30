@@ -10,6 +10,10 @@ on:
       - '.github/workflows/packaging-preflight.yml'
   workflow_dispatch:
 
+concurrency:
+  group: packaging-preflight-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   packaging-check:
     runs-on: ubuntu-latest
@@ -26,7 +30,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --prefer-offline --no-audit
 
       - name: Build app (required for packaging checks)
         run: npm run build
@@ -50,7 +54,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --prefer-offline --no-audit
 
       - name: Build app (required for packaging target validation)
         run: npm run build
