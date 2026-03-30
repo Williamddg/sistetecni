@@ -32,11 +32,36 @@ jobs:
       - name: Install dependencies
         run: npm ci --prefer-offline --no-audit
 
+      - name: Prepare CI logs dir
+        run: mkdir -p .ci-logs
+
       - name: Build app (required for packaging checks)
-        run: npm run build
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee .ci-logs/build.log
 
       - name: Run packaging static checks
-        run: npm run packaging:check
+        run: |
+          set -o pipefail
+          npm run packaging:check 2>&1 | tee .ci-logs/packaging-check.log
+
+      - name: Upload packaging-check logs (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: packaging-check-logs
+          path: .ci-logs/
+          if-no-files-found: ignore
+
+      - name: Job summary (packaging-check)
+        if: always()
+        run: |
+          {
+            echo "## Packaging check summary"
+            echo "- Blocking when triggered: **yes**"
+            echo "- Trigger: packaging-related PR changes or manual dispatch"
+            echo "- Logs artifact on failure: \`packaging-check-logs\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   packaging-validate-dir:
     if: github.event_name == 'workflow_dispatch'
@@ -56,8 +81,33 @@ jobs:
       - name: Install dependencies
         run: npm ci --prefer-offline --no-audit
 
+      - name: Prepare CI logs dir
+        run: mkdir -p .ci-logs
+
       - name: Build app (required for packaging target validation)
-        run: npm run build
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee .ci-logs/build.log
 
       - name: Run packaging target validation (dir)
-        run: npm run packaging:validate:dir
+        run: |
+          set -o pipefail
+          npm run packaging:validate:dir 2>&1 | tee .ci-logs/packaging-validate-dir.log
+
+      - name: Upload packaging validate-dir logs (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: packaging-validate-dir-logs
+          path: .ci-logs/
+          if-no-files-found: ignore
+
+      - name: Job summary (packaging-validate-dir)
+        if: always()
+        run: |
+          {
+            echo "## Packaging validate-dir summary"
+            echo "- Blocking: **manual-only job**"
+            echo "- Trigger: workflow_dispatch"
+            echo "- Logs artifact: \`packaging-validate-dir-logs\`"
+          } >> "$GITHUB_STEP_SUMMARY"
