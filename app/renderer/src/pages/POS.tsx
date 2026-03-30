@@ -16,6 +16,21 @@ import { buildInvoiceHtml } from '../invoice/invoiceTemplate';
 import { getConfig } from '../services/config';
 import { ipc } from '../services/ipcClient';
 import type { SessionUser } from '../types';
+import {
+  toDrawerPorts,
+  toDrawerPrinters,
+  toPosProduct,
+  toPosProducts,
+  toRecentRows,
+  toSaleDetail,
+  toSuspendedRows,
+  toSuspendedSaleDetail,
+  type PosProduct,
+  type RecentSaleRow,
+  type SaleDetail,
+  type SaleDetailItem,
+  type SuspendedSaleRow,
+} from '../services/posAdapters';
 
 type CartItem = {
   cart_id: string;
@@ -170,15 +185,15 @@ export const POS = ({ user }: { user: SessionUser }) => {
   const [drawerPrinterName, setDrawerPrinterName] = useState(
     localStorage.getItem('cashdrawer_printer_name') || '',
   );
-  const [drawerPorts, setDrawerPorts] = useState<DrawerPort[]>([]);
-  const [drawerPrinters, setDrawerPrinters] = useState<DrawerPrinter[]>([]);
+  const [drawerPorts, setDrawerPorts] = useState<ReturnType<typeof toDrawerPorts>>([]);
+  const [drawerPrinters, setDrawerPrinters] = useState<ReturnType<typeof toDrawerPrinters>>([]);
 
   useEffect(() => {
     focusScanner();
   }, []);
 
   useEffect(() => {
-    void listPosProducts(q).then(setProducts).catch(() => setProducts([]));
+    void listPosProducts(q).then((rows) => setProducts(toPosProducts(rows))).catch(() => setProducts([]));
   }, [q]);
 
   useEffect(() => {
@@ -203,8 +218,8 @@ export const POS = ({ user }: { user: SessionUser }) => {
 
         if (!localStorage.getItem('cashdrawer_printer_name') && Array.isArray(printers) && printers.length > 0) {
           const preferred =
-            printers.find((p: DrawerPrinter) => String(p?.name || '').toLowerCase().includes('ncr')) ||
-            printers.find((p: DrawerPrinter) => String(p?.name || '').toLowerCase().includes('generic')) ||
+            printers.find((p) => String(p?.name || '').toLowerCase().includes('ncr')) ||
+            printers.find((p) => String(p?.name || '').toLowerCase().includes('generic')) ||
             printers[0];
 
           if (preferred?.name) {
@@ -320,7 +335,12 @@ export const POS = ({ user }: { user: SessionUser }) => {
           return;
         }
 
-        addFromProduct(p);
+        const product = toPosProduct(p);
+        if (!product) {
+          setMessage('Producto inválido para agregar.');
+          return;
+        }
+        addFromProduct(product);
         setScanValue('');
         setMessage('');
       } catch (err: any) {
@@ -349,7 +369,12 @@ export const POS = ({ user }: { user: SessionUser }) => {
         return;
       }
 
-      addFromProduct(p);
+      const product = toPosProduct(p);
+      if (!product) {
+        setMessage('Producto inválido para agregar.');
+        return;
+      }
+      addFromProduct(product);
       setMessage('');
     } catch (err: any) {
       setMessage(err?.message || 'Error leyendo código de barras.');
@@ -462,13 +487,14 @@ export const POS = ({ user }: { user: SessionUser }) => {
 
   const handleResumeSuspended = async (id: string) => {
     try {
-      const detail = await getSuspendedSale(id);
+      const detailRaw = await getSuspendedSale(id);
+      const detail = toSuspendedSaleDetail(detailRaw);
       if (!detail) {
         setMessage('Venta suspendida no encontrada.');
         return;
       }
 
-      const items = Array.isArray(detail.items) ? detail.items : [];
+      const items = detail.items;
 
       setCart(
         items.map((item: SaleDetailItem) => ({
@@ -502,7 +528,7 @@ export const POS = ({ user }: { user: SessionUser }) => {
   const openSaleDetail = async (id: string) => {
     try {
       setDetailLoading(true);
-      const detail = await getSaleDetail(id);
+      const detail = toSaleDetail(await getSaleDetail(id));
       setSaleDetail(detail);
       setDetailOpen(true);
     } catch (e: any) {
