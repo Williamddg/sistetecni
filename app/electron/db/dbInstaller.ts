@@ -2,6 +2,7 @@ import mysql from 'mysql2/promise';
 import bcrypt from 'bcryptjs';
 import { v4 as uuid } from 'uuid';
 import type { MySqlConfig } from './mysqlConfig';
+import { initMySqlSchema } from './mysql/initSchema.mysql';
 
 export type InstallStep =
   | 'connecting'
@@ -24,6 +25,7 @@ export type InstallOptions = {
   adminEmail: string;
   adminPassword: string;
   companyName?: string;
+  isCashier?: boolean;
   onProgress?: (p: InstallProgress) => void;
 };
 
@@ -43,7 +45,14 @@ const progress = (
 };
 
 export const runInstaller = async (opts: InstallOptions): Promise<InstallResult> => {
-  const { mysql: cfg, adminName, adminEmail, adminPassword, onProgress } = opts;
+  const {
+    mysql: cfg,
+    adminName,
+    adminEmail,
+    adminPassword,
+    isCashier = false,
+    onProgress,
+  } = opts;
 
   let conn: mysql.Connection | null = null;
 
@@ -73,44 +82,35 @@ export const runInstaller = async (opts: InstallOptions): Promise<InstallResult>
     progress(onProgress, 'creating_database', `Base de datos "${cfg.database}" lista ✓`, 20);
 
     progress(onProgress, 'creating_tables', 'Creando tablas del POS...', 25);
-
-    await conn.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id VARCHAR(36) NOT NULL,
-        name VARCHAR(255) NOT NULL,
-        email VARCHAR(255) NOT NULL,
-        password_hash VARCHAR(255) NOT NULL,
-        role VARCHAR(20) NOT NULL,
-        created_at DATETIME NOT NULL,
-        must_change_password TINYINT(1) NOT NULL DEFAULT 0,
-        PRIMARY KEY (id),
-        UNIQUE KEY email (email)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-    `);
+    await initMySqlSchema({ skipDefaultAdminSeed: true });
 
     progress(onProgress, 'creating_tables', 'Tabla users ✓', 50);
 
-    const email = adminEmail.trim().toLowerCase();
-    const [existingRows] = await conn.query(
-      'SELECT id FROM users WHERE email = ? LIMIT 1',
-      [email],
-    );
-
-    const existing = existingRows as any[];
-
-    if (existing.length === 0) {
-      const hash = bcrypt.hashSync(adminPassword, 10);
-      const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
-
-      await conn.query(
-        `INSERT INTO users (id, name, email, password_hash, role, created_at, must_change_password)
-         VALUES (?, ?, ?, ?, 'ADMIN', ?, 0)`,
-        [uuid(), adminName.trim(), email, hash, now],
+    if (isCashier) {
+      progress(onProgress, 'creating_admin', 'Modo cajero: no se crea administrador local ✓', 90);
+    } else {
+      const email = adminEmail.trim().toLowerCase();
+      const [existingRows] = await conn.query(
+        'SELECT id FROM users WHERE email = ? LIMIT 1',
+        [email],
       );
 
-      progress(onProgress, 'creating_admin', `Administrador "${adminName}" creado ✓`, 90);
-    } else {
-      progress(onProgress, 'creating_admin', 'Usuario admin ya existe ✓', 90);
+      const existing = existingRows as any[];
+
+      if (existing.length === 0) {
+        const hash = bcrypt.hashSync(adminPassword, 10);
+        const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
+
+        await conn.query(
+          `INSERT INTO users (id, name, email, password_hash, role, created_at, must_change_password)
+           VALUES (?, ?, ?, ?, 'ADMIN', ?, 0)`,
+          [uuid(), adminName.trim(), email, hash, now],
+        );
+
+        progress(onProgress, 'creating_admin', `Administrador "${adminName}" creado ✓`, 90);
+      } else {
+        progress(onProgress, 'creating_admin', 'Usuario admin ya existe ✓', 90);
+      }
     }
 
     progress(onProgress, 'done', '¡Instalación completada exitosamente!', 100);
@@ -132,7 +132,23 @@ export const runInstaller = async (opts: InstallOptions): Promise<InstallResult>
 
 export const checkDbInstalled = async (
   cfg: MySqlConfig,
-): Promise<{ installed: boolean; reason?: string }> => {
+): Promise<{
+  installed: boolean;
+  state: 'config_invalid' | 'not_installed' | 'partial' | 'complete';
+  reason?: string;
+  missingTables?: string[];
+}> => {
+  const requiredTables = ['users', 'products', 'sales', 'sale_items', 'expenses', 'audit_logs', 'cash_closures'];
+
+  if (!cfg?.host || !cfg?.user || !cfg?.database) {
+    return {
+      installed: false,
+      state: 'config_invalid',
+      reason: 'Config MySQL incompleta',
+      missingTables: requiredTables,
+    };
+  }
+
   let conn: mysql.Connection | null = null;
 
   try {
@@ -147,22 +163,42 @@ export const checkDbInstalled = async (
 
     const [rows] = await conn.query(
       `
-      SELECT COUNT(*) as total
+      SELECT TABLE_NAME as tableName
       FROM information_schema.TABLES
       WHERE TABLE_SCHEMA = ?
-        AND TABLE_NAME IN ('users')
+        AND TABLE_NAME IN (${requiredTables.map(() => '?').join(',')})
       `,
-      [cfg.database],
+      [cfg.database, ...requiredTables],
     );
 
-    const total = Number((rows as any[])[0]?.total ?? 0);
+    const found = new Set((rows as any[]).map((r) => String((r as any).tableName ?? '')));
+    const missingTables = requiredTables.filter((name) => !found.has(name));
+
+    if (missingTables.length === requiredTables.length) {
+      return {
+        installed: false,
+        state: 'not_installed',
+        reason: 'No existen tablas del POS',
+        missingTables,
+      };
+    }
+
+    if (missingTables.length > 0) {
+      return {
+        installed: false,
+        state: 'partial',
+        reason: 'Esquema MySQL parcial',
+        missingTables,
+      };
+    }
 
     return {
-      installed: total >= 1,
-      reason: total < 1 ? 'No existe la tabla users' : undefined,
+      installed: true,
+      state: 'complete',
+      missingTables: [],
     };
   } catch (e: any) {
-    return { installed: false, reason: e?.message };
+    return { installed: false, state: 'not_installed', reason: e?.message, missingTables: requiredTables };
   } finally {
     if (conn) {
       try {

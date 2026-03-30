@@ -10,11 +10,19 @@ import { SplashScreen } from './ui/SplashScreen';
 import SetupWizard from './pages/SetupWizard';
 
 type AppState = 'loading' | 'setup' | 'ready';
+type InstallerCheckState = 'config_invalid' | 'not_installed' | 'partial' | 'complete';
+
+type SetupStatus = {
+  state: InstallerCheckState;
+  reason?: string;
+  missingTables?: string[];
+} | null;
 
 export default function App() {
   // ── Estado del instalador ──
   const [appState, setAppState]     = useState<AppState>('loading');
   const [autoConfig, setAutoConfig] = useState<any>(null);
+  const [setupStatus, setSetupStatus] = useState<SetupStatus>(null);
 
   // ── Estado interno del POS ──
   const [showSplash, setShowSplash]             = useState(true);
@@ -30,7 +38,25 @@ export default function App() {
         const api = (window as any).api;
         const detect = await api.autodetect.status();
 
-        if (!detect.ok) { setAppState('setup'); return; }
+        const readInstallerStatus = async () => {
+          try {
+            const status = await api.installer.check();
+            if (status?.state) setSetupStatus(status);
+            if (status?.state === 'complete') {
+              setAppState('ready');
+              return true;
+            }
+          } catch {
+            // best effort
+          }
+          return false;
+        };
+
+        if (!detect.ok) {
+          const isReady = await readInstallerStatus();
+          if (!isReady) setAppState('setup');
+          return;
+        }
 
         const result = detect.data;
 
@@ -41,19 +67,31 @@ export default function App() {
             setAppState('ready');
           } else {
             setAutoConfig({ ...result.config, mode: 'server' });
+            setSetupStatus({
+              state: 'partial',
+              reason: 'Se detectó instalación parcial de MySQL. Completa el setup para recuperar.',
+            });
             setAppState('setup');
           }
         } else if (result.status === 'cashier') {
           setAutoConfig({ mode: 'cashier' });
+          await readInstallerStatus();
           setAppState('setup');
         } else {
           // manual → mostrar wizard sin pre-llenado
-          setAppState('setup');
+          const isReady = await readInstallerStatus();
+          if (!isReady) setAppState('setup');
         }
       } catch {
         // Si falla el autodetect (ej: primer dev sin NSIS)
-        // ir directo al POS normal
-        setAppState('ready');
+        // usar installer:check como fallback para evitar estado ambiguo
+        try {
+          const status = await (window as any).api.installer.check();
+          if (status?.state) setSetupStatus(status);
+          setAppState(status?.state === 'complete' ? 'ready' : 'setup');
+        } catch {
+          setAppState('ready');
+        }
       }
     };
     init();
@@ -129,6 +167,7 @@ export default function App() {
     return (
       <SetupWizard
         prefill={autoConfig}
+        initialStatus={setupStatus}
         onComplete={() => setAppState('ready')}
       />
     );
