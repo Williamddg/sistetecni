@@ -17,6 +17,13 @@ export type RendererApi = {
   mysql: {
     initSchema: () => Promise<unknown>;
   };
+  users: {
+    changePassword: (payload: unknown) => Promise<unknown>;
+  };
+  license: {
+    activate: (licenseKey: string) => Promise<unknown>;
+    status: () => Promise<unknown>;
+  };
   installer: {
     check: () => Promise<InstallerCheckStatus>;
     testConnection: (cfg: unknown) => Promise<{ ok: boolean; message?: string }>;
