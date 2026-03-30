@@ -83,7 +83,11 @@ export const POS = ({ user }: { user: any }) => {
   const [drawerMode, setDrawerMode] = useState<'printer' | 'serial'>(
     ((localStorage.getItem('cashdrawer_mode') as 'printer' | 'serial') || 'printer'),
   );
-  const [drawerPort, setDrawerPort] = useState(localStorage.getItem('cashdrawer_port') || 'COM3');
+  const defaultDrawerPort = (() => {
+    const platform = String((globalThis.navigator as any)?.platform ?? '').toLowerCase();
+    return platform.includes('win') ? 'COM3' : '/dev/ttyUSB0';
+  })();
+  const [drawerPort, setDrawerPort] = useState(localStorage.getItem('cashdrawer_port') || defaultDrawerPort);
   const [drawerBaudRate, setDrawerBaudRate] = useState(
     Number(localStorage.getItem('cashdrawer_baudrate') || '9600'),
   );

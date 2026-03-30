@@ -1,16 +1,7 @@
 import { ipc } from './ipcClient';
+import type { SessionUser } from '../types';
 
-export type Role = 'ADMIN' | 'SUPERVISOR' | 'SELLER';
-
-export type AuthUser = {
-  id: string;
-  name: string;
-  email: string;
-  role: Role;
-  mustChangePassword?: boolean; // ✅ nuevo
-};
-
-export const login = async (email: string, password: string): Promise<AuthUser> => {
+export const login = async (email: string, password: string): Promise<SessionUser> => {
   const u = await ipc.auth.login(email, password);
-  return u as AuthUser;
+  return u as SessionUser;
 };
