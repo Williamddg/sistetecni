@@ -19,6 +19,7 @@ import {
   type InstallerStatusLike,
 } from '../services/setupRecovery';
 import { readSetupTelemetry, recordSetupFailure } from '../services/setupTelemetry';
+import { getRendererApi } from '../services/rendererApi';
 
 // ─────────────────────────────────────────────
 // Tipos
@@ -67,6 +68,7 @@ export default function SetupWizard({
   prefill?: PrefillData | null;
   initialStatus?: InstallerStatus;
 }) {
+  const api = getRendererApi();
   const isCashier = prefill?.mode === 'cashier';
 
   const [step, setStep]             = useState<Step>('connection');
@@ -98,7 +100,6 @@ export default function SetupWizard({
     : '';
 
   const refreshInstallerStatus = async () => {
-    const api = (window as any).api;
     try {
       const status = await api?.installer?.check?.();
       if (status?.state) setRecoveryStatus(status);
@@ -117,7 +118,6 @@ export default function SetupWizard({
 
   // Escuchar progreso en tiempo real
   useEffect(() => {
-    const api = (window as any).api;
     if (!api?.on) return;
     const unsub = api.on?.('installer:progress', (p: InstallProgress) => {
       setCurrentProgress(p);
@@ -141,7 +141,6 @@ export default function SetupWizard({
 
   // ── Probar conexión ──
   const handleTestConnection = async () => {
-    const api = (window as any).api;
     setTesting(true);
     setTestResult(null);
     setRecoveryHint('');
@@ -197,7 +196,6 @@ export default function SetupWizard({
   // ── Ejecutar instalación ──
   const handleInstall = async () => {
     if (!validateAdmin()) return;
-    const api = (window as any).api;
     setStep('installing');
     setProgress([]);
 
@@ -544,7 +542,6 @@ export default function SetupWizard({
 
   // ── Instalación cajero: solo guarda config y verifica conexión ──
   async function handleInstallCashier() {
-    const api = (window as any).api;
     setStep('installing');
     setProgress([]);
 

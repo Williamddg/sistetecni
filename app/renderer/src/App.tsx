@@ -8,25 +8,23 @@ import { BusinessSetup } from './pages/BusinessSetup';
 import { getConfig } from './services/config';
 import { SplashScreen } from './ui/SplashScreen';
 import SetupWizard from './pages/SetupWizard';
+import { AppBootScreen } from './ui/AppBootScreen';
+import type { InstallerAutoConfig, SessionUser } from './types';
+import { getRendererApi, type InstallerCheckStatus } from './services/rendererApi';
 
 type AppState = 'loading' | 'setup' | 'ready';
-type InstallerCheckState = 'config_invalid' | 'not_installed' | 'partial' | 'complete';
-
-type SetupStatus = {
-  state: InstallerCheckState;
-  reason?: string;
-  missingTables?: string[];
-} | null;
+type SetupStatus = InstallerCheckStatus;
 
 export default function App() {
+  const api = getRendererApi();
   // ── Estado del instalador ──
   const [appState, setAppState]     = useState<AppState>('loading');
-  const [autoConfig, setAutoConfig] = useState<any>(null);
+  const [autoConfig, setAutoConfig] = useState<InstallerAutoConfig>(null);
   const [setupStatus, setSetupStatus] = useState<SetupStatus>(null);
 
   // ── Estado interno del POS ──
   const [showSplash, setShowSplash]             = useState(true);
-  const [user, setUser]                         = useState<any>(null);
+  const [user, setUser]                         = useState<SessionUser | null>(null);
   const [forceChangePassword, setForceChangePassword] = useState(false);
   const [cfgChecked, setCfgChecked]             = useState(false);
   const [needsBusinessSetup, setNeedsBusinessSetup]   = useState(false);
@@ -35,7 +33,6 @@ export default function App() {
   useEffect(() => {
     const init = async () => {
       try {
-        const api = (window as any).api;
         const detect = await api.autodetect.status();
 
         const readInstallerStatus = async () => {
@@ -86,7 +83,7 @@ export default function App() {
         // Si falla el autodetect (ej: primer dev sin NSIS)
         // usar installer:check como fallback para evitar estado ambiguo
         try {
-          const status = await (window as any).api.installer.check();
+          const status = await api.installer.check();
           if (status?.state) setSetupStatus(status);
           setAppState(status?.state === 'complete' ? 'ready' : 'setup');
         } catch {
@@ -127,7 +124,7 @@ export default function App() {
     sessionStorage.clear();
   };
 
-  const handleLogin = (u: any): void => {
+  const handleLogin = (u: SessionUser): void => {
     if (u._forceChangePassword || u.mustChangePassword) {
       setUser(u);
       setForceChangePassword(true);
@@ -141,25 +138,7 @@ export default function App() {
 
   // Paso 1: wizard de instalación MySQL (primer arranque)
   if (appState === 'loading') {
-    return (
-      <div style={{
-        display: 'flex', alignItems: 'center',
-        justifyContent: 'center', height: '100vh',
-        background: '#F8FAFC',
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            width: 36, height: 36, margin: '0 auto 12px',
-            border: '3px solid #DBEAFE', borderTopColor: '#2563EB',
-            borderRadius: '50%', animation: 'spin 0.8s linear infinite',
-          }} />
-          <p style={{ color: '#64748B', fontSize: 14, margin: 0 }}>
-            Iniciando sistema...
-          </p>
-        </div>
-        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
-      </div>
-    );
+    return <AppBootScreen />;
   }
 
   // Paso 2: wizard de instalación (BD no configurada)
