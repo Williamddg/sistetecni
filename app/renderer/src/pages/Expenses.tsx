@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ipc } from '../services/ipcClient';
-import { getAuthContext } from '../services/session';
+import { addExpense, listExpenses, type ExpenseRow } from '../services/expenses';
 
-function fmtDate(v: any): string {
+function fmtDate(v: unknown): string {
   if (!v) return '';
   if (v instanceof Date) return v.toLocaleString();
 
@@ -13,7 +12,7 @@ function fmtDate(v: any): string {
   return s;
 }
 
-function fmtMoney(v: any): string {
+function fmtMoney(v: unknown): string {
   const n = Number(v ?? 0);
   if (!isFinite(n)) return '$0';
   return new Intl.NumberFormat('es-CO', {
@@ -38,10 +37,10 @@ function rangeFromDateInputs(from: string, to: string): { fromIso: string; toIso
   return { fromIso, toIso };
 }
 
-export const Expenses = ({ user }: { user: any }) => {
+export const Expenses = ({ user }: { user: { id?: string } }) => {
   const [from, setFrom] = useState(() => localYmd(new Date()));
   const [to, setTo] = useState(() => localYmd(new Date()));
-  const [rows, setRows] = useState<any[]>([]);
+  const [rows, setRows] = useState<ExpenseRow[]>([]);
   const [concept, setConcept] = useState('');
   const [amount, setAmount] = useState(0);
   const [notes, setNotes] = useState('');
@@ -55,16 +54,11 @@ export const Expenses = ({ user }: { user: any }) => {
 
       const { fromIso, toIso } = rangeFromDateInputs(from, to);
 
-      const list = await ipc.expenses.list({
-        ...getAuthContext(),
-        from: fromIso,
-        to: toIso,
-      });
-
-      setRows(Array.isArray(list) ? list : []);
-    } catch (e: any) {
+      setRows(await listExpenses(fromIso, toIso));
+    } catch (e: unknown) {
       setRows([]);
-      setError(e?.message || 'No se pudieron cargar los gastos.');
+      const message = e instanceof Error ? e.message : String(e ?? '');
+      setError(message || 'No se pudieron cargar los gastos.');
     } finally {
       setLoading(false);
     }
@@ -157,23 +151,21 @@ export const Expenses = ({ user }: { user: any }) => {
                   return;
                 }
 
-                await ipc.expenses.add({
-                  ...getAuthContext(),
-                  expense: {
-                    date: new Date().toISOString(),
-                    concept: concept.trim(),
-                    amount: Number(amount ?? 0),
-                    notes: notes.trim(),
-                    userId: user?.id,
-                  },
+                await addExpense({
+                  date: new Date().toISOString(),
+                  concept: concept.trim(),
+                  amount: Number(amount ?? 0),
+                  notes: notes.trim(),
+                  userId: user?.id,
                 });
 
                 setConcept('');
                 setAmount(0);
                 setNotes('');
                 await refresh();
-              } catch (e: any) {
-                setError(e?.message || 'No se pudo guardar el gasto.');
+              } catch (e: unknown) {
+                const message = e instanceof Error ? e.message : String(e ?? '');
+                setError(message || 'No se pudo guardar el gasto.');
               }
             }}
           >

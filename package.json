@@ -13,10 +13,17 @@
     "build:renderer": "vite build --config app/renderer/vite.config.ts",
     "build:electron": "node -e \"require('fs').rmSync('dist/electron',{recursive:true,force:true})\" && tsc -p tsconfig.electron.json",
     "lint": "eslint . --ext .ts,.tsx",
-    "package": "npm run build && npm run rebuild:native && electron-builder --win nsis",
-    "rebuild:native": "npx electron-rebuild -f -w better-sqlite3",
+    "package": "npm run package:win",
+    "rebuild:native": "npx electron-rebuild -f -w better-sqlite3,serialport",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "package:prepare": "npm run build && npm run rebuild:native",
+    "package:win": "npm run package:prepare && electron-builder --win nsis --x64",
+    "package:mac": "npm run package:prepare && electron-builder --mac dmg --x64",
+    "package:linux": "npm run package:prepare && electron-builder --linux AppImage deb --x64",
+    "package:linux:dir": "npm run package:prepare && electron-builder --linux AppImage deb --x64 --dir",
+    "packaging:check": "node scripts/packaging/check-packaging-config.cjs",
+    "packaging:validate:dir": "node scripts/packaging/validate-targets.cjs"
   },
   "build": {
     "appId": "com.sistetecni.pos",
@@ -32,8 +39,11 @@
     ],
     "extraResources": [
       {
-        "from": "resources/mysql-8.0.msi",
-        "to": "resources/mysql-8.0.msi"
+        "from": "resources",
+        "to": "resources",
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "publish": [
@@ -47,7 +57,9 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "artifactName": "SistetecniPOS-Setup-${version}.exe",
@@ -61,6 +73,42 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Sistetecni POS"
+    },
+    "asarUnpack": [
+      "**/*.node"
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "SistetecniPOS-${version}-mac-${arch}.${ext}",
+      "category": "public.app-category.business"
+    },
+    "dmg": {
+      "artifactName": "SistetecniPOS-${version}-mac-${arch}.${ext}"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "category": "Office",
+      "artifactName": "SistetecniPOS-${version}-linux-${arch}.${ext}"
     }
   },
   "dependencies": {

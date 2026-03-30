@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react';
-import { createUser, listUsers, resetUserPassword } from '../services/users';
+import {
+  createUser,
+  listUsers,
+  resetUserPassword,
+  type UserRole,
+  type UserRow,
+} from '../services/users';
 
-const fmtDate = (v: any): string => {
+const fmtDate = (v: unknown): string => {
   if (!v) return '—';
   const d = v instanceof Date ? v : new Date(v);
   if (Number.isNaN(d.getTime())) return String(v);
@@ -15,10 +21,10 @@ const fmtDate = (v: any): string => {
 };
 
 export const Users = () => {
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<UserRow[]>([]);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<'ADMIN' | 'SUPERVISOR' | 'SELLER'>('SELLER');
+  const [role, setRole] = useState<UserRole>('SELLER');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
@@ -62,7 +68,7 @@ export const Users = () => {
           </thead>
 
           <tbody>
-            {users.map((u: any) => (
+            {users.map((u) => (
               <tr key={u.id}>
                 <td>{u.name}</td>
                 <td>{u.email}</td>
@@ -136,8 +142,9 @@ export const Users = () => {
                 setPassword('');
                 setConfirmPassword('');
                 await load();
-              } catch (e: any) {
-                alert(e?.message || 'No se pudo crear usuario.');
+              } catch (e: unknown) {
+                const message = e instanceof Error ? e.message : String(e ?? '');
+                alert(message || 'No se pudo crear usuario.');
               }
             }}
           >
@@ -175,8 +182,9 @@ export const Users = () => {
                   setResetId('');
                   setNewPassword('');
                   setConfirmNewPassword('');
-                } catch (e: any) {
-                  alert(e?.message || 'No se pudo resetear contraseña.');
+                } catch (e: unknown) {
+                  const message = e instanceof Error ? e.message : String(e ?? '');
+                  alert(message || 'No se pudo resetear contraseña.');
                 }
               }}
             >

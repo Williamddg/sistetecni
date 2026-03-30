@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { reportDailyClose } from '../services/reports';
 import { buildDailyCloseHtml } from '../reports/dailyCloseTemplate';
 import { getConfig } from '../services/config';
+import type { SessionUser } from '../types';
 
 const money = (n: number): string => {
   return new Intl.NumberFormat('es-CO', {
@@ -94,10 +95,10 @@ function openHtmlDocument(title: string, html: string): void {
   w.document.close();
 }
 
-export const DailyClose = ({ user }: { user: any }) => {
+export const DailyClose = ({ user }: { user: SessionUser }) => {
   const [date, setDate] = useState(localYmd(new Date()));
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<Awaited<ReturnType<typeof reportDailyClose>> | null>(null);
   const [bizName, setBizName] = useState('');
   const [error, setError] = useState('');
 
@@ -111,8 +112,9 @@ export const DailyClose = ({ user }: { user: any }) => {
     try {
       const res = await reportDailyClose(from, to);
       setData(res);
-    } catch (e: any) {
-      setError(e?.message || 'No se pudo cargar el cierre diario.');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e ?? '');
+      setError(message || 'No se pudo cargar el cierre diario.');
       setData(null);
     } finally {
       setLoading(false);

@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import type { SessionUser } from '../types';
+import { changeOwnPassword } from '../services/users';
 
 export const ChangePassword = ({
   user,
   onChanged,
 }: {
-  user: any;
+  user: SessionUser;
   onChanged: () => void;
 }) => {
   const [password, setPassword] = useState('');
@@ -30,19 +32,16 @@ export const ChangePassword = ({
     }
 
     try {
-      await window.api.users.changePassword({
+      await changeOwnPassword({
         userId: String(user.id),
-        data: {
-          id: String(user.id),          // ✅ objetivo (el mismo usuario)
-          newPassword: String(password) // ✅ nueva clave
-          // currentPassword: ''         // opcional si luego lo exiges
-        },
+        newPassword: String(password),
       });
 
       alert('Contraseña actualizada correctamente.');
       onChanged();
-    } catch (e: any) {
-      setError(e?.message || 'Error al cambiar contraseña.');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e ?? '');
+      setError(message || 'Error al cambiar contraseña.');
     }
   };
 
