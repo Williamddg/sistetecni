@@ -92,6 +92,7 @@ Workflows actuales:
 - Índice general/guía de lectura: `docs/00-indice-documentacion.md`
 - Arquitectura base: `docs/04-arquitectura.md`
 - Hoja de operación diaria (Fase 13): `docs/operations/hoja-operacion-diaria.md`
+- Checklist final go/no-go (Fase 13): `docs/operations/checklist-final-produccion.md`
 - Modos y soporte oficial/degradado: `docs/operations/modos-operacion-y-soporte.md`
 - Runbook por entorno/plataforma: `docs/operations/runbook-entorno-plataforma.md`
 - Manual multicaja (operativo): `docs/operations/manual-instalacion-multicaja.md`
@@ -103,8 +104,9 @@ Workflows actuales:
 
 Si vas a operar en entorno productivo, empieza por:
 1. `docs/00-indice-documentacion.md`
-2. `docs/operations/hoja-operacion-diaria.md`
-3. `docs/operations/modos-operacion-y-soporte.md`
-4. `docs/operations/runbook-entorno-plataforma.md`
-5. `docs/operations/manual-instalacion-multicaja.md` (solo si usarás MySQL multicaja)
-6. `docs/05-plan-pruebas.md`
+2. `docs/operations/checklist-final-produccion.md`
+3. `docs/operations/hoja-operacion-diaria.md`
+4. `docs/operations/modos-operacion-y-soporte.md`
+5. `docs/operations/runbook-entorno-plataforma.md`
+6. `docs/operations/manual-instalacion-multicaja.md` (solo si usarás MySQL multicaja)
+7. `docs/05-plan-pruebas.md`

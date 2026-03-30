@@ -68,6 +68,7 @@ Validar operación core POS, sin asumir paridad completa de integraciones Window
 ---
 
 ## 4) Referencias cruzadas
+- Checklist final go/no-go: `docs/operations/checklist-final-produccion.md`
 - Hoja diaria compacta: `docs/operations/hoja-operacion-diaria.md`
 - Modos y soporte oficial/degradado: `docs/operations/modos-operacion-y-soporte.md`
 - Manual multicaja (Windows): `docs/operations/manual-instalacion-multicaja.md`

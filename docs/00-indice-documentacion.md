@@ -5,10 +5,11 @@ Este índice organiza la documentación para uso diario (operación) y para mant
 ## 1) Arranque recomendado para operación
 1. `README.md` (comandos y rutas).
 2. `docs/05-plan-pruebas.md` (checklist funcional/regresión).
-3. `docs/operations/hoja-operacion-diaria.md` (checklist diario compacto de operación).
-4. `docs/operations/modos-operacion-y-soporte.md` (estado oficial/degradado por modo).
-5. `docs/operations/runbook-entorno-plataforma.md` (operación por entorno/SO).
-6. `docs/operations/manual-instalacion-multicaja.md` (solo si se usará modo multicaja con MySQL).
+3. `docs/operations/checklist-final-produccion.md` (go/no-go y riesgos residuales).
+4. `docs/operations/hoja-operacion-diaria.md` (checklist diario compacto de operación).
+5. `docs/operations/modos-operacion-y-soporte.md` (estado oficial/degradado por modo).
+6. `docs/operations/runbook-entorno-plataforma.md` (operación por entorno/SO).
+7. `docs/operations/manual-instalacion-multicaja.md` (solo si se usará modo multicaja con MySQL).
 
 ## 2) Núcleo funcional y arquitectura
 - `docs/01-requerimientos.md`
@@ -17,6 +18,7 @@ Este índice organiza la documentación para uso diario (operación) y para mant
 - `docs/04-arquitectura.md`
 
 ## 3) Operación
+- `docs/operations/checklist-final-produccion.md` (criterios de salida go/no-go + riesgos)
 - `docs/operations/hoja-operacion-diaria.md` (operación diaria de 1 página)
 - `docs/operations/modos-operacion-y-soporte.md` (qué está soportado/degradado/no-prometible)
 - `docs/operations/runbook-entorno-plataforma.md` (checklists y respuesta rápida por entorno)

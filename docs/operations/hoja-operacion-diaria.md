@@ -56,7 +56,5 @@ Escalar a soporte técnico cuando ocurra cualquiera de estos casos:
 - MySQL multicaja (instalación/config): `docs/operations/manual-instalacion-multicaja.md`
 - Packaging y prerequisitos externos: `docs/operations/prerequisitos-externos-packaging.md`
 
-## Qué queda para el checklist final de producción (siguiente ronda)
-- Checklist de readiness final por entorno (producción/piloto).
-- Riesgos residuales priorizados con dueño/mitigación.
-- Criterios de salida operativa definitivos (go/no-go).
+## Checklist final de producción (referencia)
+- Ver documento consolidado: `docs/operations/checklist-final-produccion.md`.
