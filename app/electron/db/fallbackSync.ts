@@ -42,6 +42,42 @@ type SyncCycleResult = {
   stoppedAtOperationId?: string;
 };
 
+type SyncRunReason = 'auto' | 'manual';
+
+type SyncRunRecord = {
+  at: string;
+  reason: SyncRunReason;
+  result: SyncCycleResult;
+};
+
+type FallbackSyncConfig = {
+  retryBaseMs: number;
+  retryMaxMs: number;
+  maxAttempts: number;
+};
+
+type FallbackSyncQueueCounts = {
+  pending: number;
+  synced: number;
+  failed: number;
+  unsupported: number;
+  duplicate: number;
+};
+
+type FallbackSyncStatus = {
+  inProgress: boolean;
+  lastRun: SyncRunRecord | null;
+  config: FallbackSyncConfig;
+  queue: FallbackSyncQueueCounts;
+  recentErrors: Array<{
+    id: string;
+    operation: string;
+    syncAttempts: number;
+    lastAttemptAt: string | null;
+    lastError: string | null;
+  }>;
+};
+
 const SUPPORTED_OPERATIONS = new Set<FallbackOperationType>([
   'sales:create',
   'cash:open',
@@ -51,6 +87,19 @@ const SUPPORTED_OPERATIONS = new Set<FallbackOperationType>([
 ]);
 
 let syncInProgress = false;
+let lastRun: SyncRunRecord | null = null;
+
+const readNumberEnv = (name: string, fallback: number): number => {
+  const parsed = Number(process.env[name] ?? '');
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return parsed;
+};
+
+const SYNC_CONFIG: FallbackSyncConfig = {
+  retryBaseMs: readNumberEnv('FALLBACK_SYNC_RETRY_BASE_MS', 5_000),
+  retryMaxMs: readNumberEnv('FALLBACK_SYNC_RETRY_MAX_MS', 120_000),
+  maxAttempts: readNumberEnv('FALLBACK_SYNC_MAX_ATTEMPTS', 10),
+};
 
 const nowIso = (): string => new Date().toISOString();
 
@@ -111,6 +160,27 @@ const selectPendingOperations = (limit: number): FallbackOperationRow[] => {
       LIMIT ?
     `)
     .all(limit) as FallbackOperationRow[];
+};
+
+const shouldRetryNow = (row: FallbackOperationRow, now: number): boolean => {
+  const attempts = Number(row.sync_attempts ?? 0);
+  if (attempts >= SYNC_CONFIG.maxAttempts) return false;
+
+  const lastAttemptAt = row.last_attempt_at ? Date.parse(row.last_attempt_at) : NaN;
+  if (!Number.isFinite(lastAttemptAt)) return true;
+
+  if (attempts <= 0) return true;
+  const retryDelay = Math.min(
+    SYNC_CONFIG.retryMaxMs,
+    SYNC_CONFIG.retryBaseMs * Math.pow(2, Math.max(0, attempts - 1)),
+  );
+  return now - lastAttemptAt >= retryDelay;
+};
+
+const selectRetryableOperations = (limit: number): FallbackOperationRow[] => {
+  const pending = selectPendingOperations(limit * 3);
+  const now = Date.now();
+  return pending.filter((row) => shouldRetryNow(row, now)).slice(0, limit);
 };
 
 const markSynced = (id: string, status: Extract<SyncStatus, 'synced' | 'duplicate' | 'unsupported'>): void => {
@@ -263,7 +333,7 @@ export const runFallbackResyncCycle = async (options: SyncCycleOptions = {}): Pr
     await ensureMySqlSyncTable();
 
     const limit = Math.max(1, Math.min(options.limit ?? 50, 200));
-    const pending = selectPendingOperations(limit);
+    const pending = selectRetryableOperations(limit);
 
     const result: SyncCycleResult = {
       attempted: 0,
@@ -301,8 +371,85 @@ export const runFallbackResyncCycle = async (options: SyncCycleOptions = {}): Pr
       }
     }
 
+    lastRun = {
+      at: nowIso(),
+      reason: 'auto',
+      result,
+    };
     return result;
   } finally {
     syncInProgress = false;
   }
+};
+
+const countRows = (whereSql: string, params: unknown[] = []): number => {
+  const row = getDb()
+    .prepare(`SELECT COUNT(1) as count FROM fallback_operations ${whereSql}`)
+    .get(...params) as { count: number };
+  return Number(row?.count ?? 0);
+};
+
+const getQueueCounts = (): FallbackSyncQueueCounts => {
+  ensureFallbackOperationsTable();
+  return {
+    pending: countRows('WHERE synced = 0'),
+    synced: countRows(`WHERE sync_status = 'synced'`),
+    failed: countRows(`WHERE synced = 0 AND sync_status = 'failed'`),
+    unsupported: countRows(`WHERE sync_status = 'unsupported'`),
+    duplicate: countRows(`WHERE sync_status = 'duplicate'`),
+  };
+};
+
+const getRecentErrors = (): FallbackSyncStatus['recentErrors'] => {
+  ensureFallbackOperationsTable();
+  const rows = getDb().prepare(`
+    SELECT id, operation, sync_attempts, last_attempt_at, last_error
+    FROM fallback_operations
+    WHERE sync_status = 'failed' AND last_error IS NOT NULL AND TRIM(last_error) <> ''
+    ORDER BY COALESCE(last_attempt_at, created_at) DESC
+    LIMIT 10
+  `).all() as Array<{
+    id: string;
+    operation: string;
+    sync_attempts: number | null;
+    last_attempt_at: string | null;
+    last_error: string | null;
+  }>;
+
+  return rows.map((row) => ({
+    id: row.id,
+    operation: row.operation,
+    syncAttempts: Number(row.sync_attempts ?? 0),
+    lastAttemptAt: row.last_attempt_at ?? null,
+    lastError: row.last_error ?? null,
+  }));
+};
+
+export const getFallbackSyncStatus = (): FallbackSyncStatus => {
+  return {
+    inProgress: syncInProgress,
+    lastRun,
+    config: SYNC_CONFIG,
+    queue: getQueueCounts(),
+    recentErrors: getRecentErrors(),
+  };
+};
+
+export const runFallbackResyncManual = async (options: SyncCycleOptions = {}): Promise<{
+  ok: boolean;
+  reason?: string;
+  result?: SyncCycleResult;
+}> => {
+  if (syncInProgress) return { ok: false, reason: 'SYNC_IN_PROGRESS' };
+
+  const resolution = await resolveDatabaseMode();
+  if (resolution !== 'mysql_primary') return { ok: false, reason: 'MYSQL_NOT_PRIMARY' };
+
+  const result = await runFallbackResyncCycle(options);
+  lastRun = {
+    at: nowIso(),
+    reason: 'manual',
+    result,
+  };
+  return { ok: true, result };
 };
