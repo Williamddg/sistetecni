@@ -91,7 +91,10 @@ Workflows actuales:
 ## Documentación técnica y operativa
 - Índice general/guía de lectura: `docs/00-indice-documentacion.md`
 - Arquitectura base: `docs/04-arquitectura.md`
+- Modos y soporte oficial/degradado: `docs/operations/modos-operacion-y-soporte.md`
+- Runbook por entorno/plataforma: `docs/operations/runbook-entorno-plataforma.md`
 - Manual multicaja (operativo): `docs/operations/manual-instalacion-multicaja.md`
+- Prerrequisitos externos de packaging/distribución: `docs/operations/prerequisitos-externos-packaging.md`
 - Script SQL MySQL multicaja: `docs/sql/setup-sistetecni-pos.sql`
 - Historial técnico por fases (migraciones, hardening, CI, mantenibilidad): `docs/` (`08` a `37`).
 
@@ -99,5 +102,7 @@ Workflows actuales:
 
 Si vas a operar en entorno productivo, empieza por:
 1. `docs/00-indice-documentacion.md`
-2. `docs/operations/manual-instalacion-multicaja.md` (solo si usarás MySQL multicaja)
-3. `docs/05-plan-pruebas.md`
+2. `docs/operations/modos-operacion-y-soporte.md`
+3. `docs/operations/runbook-entorno-plataforma.md`
+4. `docs/operations/manual-instalacion-multicaja.md` (solo si usarás MySQL multicaja)
+5. `docs/05-plan-pruebas.md`
