@@ -19,6 +19,7 @@ Este índice organiza la documentación para uso diario (operación) y para mant
 
 ## 3) Operación
 - `docs/operations/checklist-final-produccion.md` (criterios de salida go/no-go + riesgos)
+- `docs/operations/tabletop-simulacion-salida-fase13.md` (validación práctica del checklist)
 - `docs/operations/hoja-operacion-diaria.md` (operación diaria de 1 página)
 - `docs/operations/modos-operacion-y-soporte.md` (qué está soportado/degradado/no-prometible)
 - `docs/operations/runbook-entorno-plataforma.md` (checklists y respuesta rápida por entorno)

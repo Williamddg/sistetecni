@@ -93,6 +93,7 @@ Workflows actuales:
 - Arquitectura base: `docs/04-arquitectura.md`
 - Hoja de operación diaria (Fase 13): `docs/operations/hoja-operacion-diaria.md`
 - Checklist final go/no-go (Fase 13): `docs/operations/checklist-final-produccion.md`
+- Tabletop de salida (Fase 13): `docs/operations/tabletop-simulacion-salida-fase13.md`
 - Modos y soporte oficial/degradado: `docs/operations/modos-operacion-y-soporte.md`
 - Runbook por entorno/plataforma: `docs/operations/runbook-entorno-plataforma.md`
 - Manual multicaja (operativo): `docs/operations/manual-instalacion-multicaja.md`

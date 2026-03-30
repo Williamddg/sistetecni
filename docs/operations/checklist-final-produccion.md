@@ -22,6 +22,7 @@ No prometer todavía: firma/notarización/release engineering end-to-end automat
 ---
 
 ## 3) Validación previa al despliegue (pre)
+**Responsable sugerido:** Soporte técnico + responsable de release local.
 
 ### 3.1 General (todos los entornos)
 - [ ] Versión candidata identificada y trazable.
@@ -46,6 +47,7 @@ No prometer todavía: firma/notarización/release engineering end-to-end automat
 ---
 
 ## 4) Validación posterior al despliegue (post)
+**Responsable sugerido:** Soporte operativo del turno + referente funcional.
 
 ### 4.1 Smoke operativo (primera ventana)
 - [ ] Login OK.
@@ -85,7 +87,17 @@ Se considera operación aceptable cuando:
 
 ---
 
-## 7) Referencias (no duplicar)
+## 7) Evidencia mínima a registrar (para decisión Go/No-Go)
+- Identificador de versión evaluada.
+- Fecha/hora de validación pre y post.
+- Resultado de smoke operativo (OK/FAIL + nota breve).
+- Evidencia de backup (ruta/archivo/timestamp).
+- Si aplica MySQL: estado de conectividad y observación de sync/fallback.
+- Decisión final: **GO** o **NO-GO**, con responsable que aprueba.
+
+---
+
+## 8) Referencias (no duplicar)
 - Hoja diaria: `docs/operations/hoja-operacion-diaria.md`
 - Modos y soporte real: `docs/operations/modos-operacion-y-soporte.md`
 - Runbook por entorno/SO: `docs/operations/runbook-entorno-plataforma.md`
